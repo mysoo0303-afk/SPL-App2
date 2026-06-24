@@ -5,161 +5,123 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>SPL 조회</title>
 <style>
-  :root {
-    --bg: #f0f4f8;
-    --panel: #ffffff;
-    --primary: #1e3a8a;
-    --accent: #3b82f6;
-    --accent-light: #dbeafe;
-    --text: #1a2e5a;
-    --sub: #64748b;
-    --bd: #e2e8f0;
-    --ok: #16a34a;
-    --warn: #dc2626;
-    --warn-bg: #fef2f2;
-    --ok-bg: #f0fdf4;
-    --shadow: rgba(0,0,0,0.08);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+:root {
+  --bg:#eef2f9; --panel:#fff; --primary:#1a2e5a; --accent:#2a5298;
+  --blue:#3b82f6; --text:#1a202c; --sub:#64748b; --bd:#e2e8f0;
+  --zone:#daeaf7; --zone-h:#b8d9f0; --zone-s:#a8c8e8;
+  --grass:#d4edda; --grass-s:#a8d5b5;
+  --ok:#16a34a; --warn:#dc2626; --warn-bg:#fef2f2; --ok-bg:#f0fdf4;
+  --shadow:rgba(0,0,0,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden;}
 
-  /* ── 헤더 ── */
-  header {
-    background: var(--primary);
-    color: #fff;
-    padding: 16px 16px 12px;
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  }
-  header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
-  header .sub { font-size: 11px; opacity: 0.7; margin-top: 2px; }
-  #updateBadge {
-    display: inline-block; font-size: 10px; background: rgba(255,255,255,0.2);
-    border-radius: 20px; padding: 2px 8px; margin-top: 4px;
-  }
+/* ── 로딩 ── */
+#loadingScreen{position:fixed;inset:0;background:var(--primary);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;z-index:999;color:#fff;}
+#loadingScreen h2{font-size:20px;font-weight:700;margin-bottom:8px;}
+#loadingScreen p{font-size:13px;opacity:.7;margin-bottom:28px;}
+.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-  /* ── 검색 바 ── */
-  .search-box {
-    padding: 12px 16px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--bd);
-    position: sticky; top: 60px; z-index: 99;
-  }
-  .search-row { display: flex; gap: 8px; align-items: center; }
-  #searchInput {
-    flex: 1; padding: 10px 14px; font-size: 15px;
-    border: 1.5px solid var(--bd); border-radius: 10px;
-    outline: none; color: var(--text);
-    background: var(--bg);
-    transition: border-color 0.15s;
-  }
-  #searchInput:focus { border-color: var(--accent); }
-  #clearBtn {
-    display: none; width: 36px; height: 36px;
-    border: none; border-radius: 50%; background: var(--bd);
-    color: var(--sub); font-size: 18px; cursor: pointer;
-    flex-shrink: 0; line-height: 36px; text-align: center;
-  }
-  .filter-row { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
-  .filter-row::-webkit-scrollbar { display: none; }
-  .filter-chip {
-    flex-shrink: 0; padding: 5px 12px; font-size: 12px; font-weight: 600;
-    border-radius: 20px; border: 1.5px solid var(--bd);
-    background: var(--panel); color: var(--sub); cursor: pointer;
-    transition: all 0.15s;
-  }
-  .filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* ── 화면 슬라이드 ── */
+#app{position:fixed;inset:0;display:flex;overflow:hidden;}
+.screen{min-width:100%;height:100%;display:flex;flex-direction:column;
+  transition:transform .3s ease;background:var(--bg);}
+#screens{display:flex;width:300%;height:100%;
+  transition:transform .3s ease;}
+#screens.s0{transform:translateX(0);}
+#screens.s1{transform:translateX(-33.333%);}
+#screens.s2{transform:translateX(-66.666%);}
 
-  /* ── 결과 영역 ── */
-  #statusBar {
-    padding: 8px 16px; font-size: 12px; color: var(--sub);
-    background: var(--bg); border-bottom: 1px solid var(--bd);
-  }
-  #results { padding: 8px 12px 80px; }
-  .empty { text-align: center; color: var(--sub); padding: 60px 20px; font-size: 14px; }
-  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+/* ── 공통 헤더 ── */
+.hdr{background:var(--primary);color:#fff;padding:14px 16px 12px;
+  flex-shrink:0;display:flex;align-items:center;gap:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.hdr-back{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:32px;height:32px;border-radius:8px;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hdr-title{font-size:16px;font-weight:700;flex:1;}
+.hdr-sub{font-size:11px;opacity:.65;white-space:nowrap;}
+.update-badge{font-size:10px;background:rgba(255,255,255,.18);
+  border-radius:20px;padding:2px 8px;white-space:nowrap;}
 
-  /* ── 카드 ── */
-  .card {
-    background: var(--panel); border-radius: 12px;
-    margin-bottom: 10px; overflow: hidden;
-    box-shadow: 0 1px 4px var(--shadow);
-    border: 1px solid var(--bd);
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  .card:active { transform: scale(0.98); }
-  .card-head {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 12px 14px 8px;
-  }
-  .card-eq { font-size: 13px; font-weight: 700; color: var(--primary); }
-  .card-type {
-    font-size: 10px; font-weight: 600; background: var(--accent-light);
-    color: var(--accent); padding: 2px 8px; border-radius: 10px;
-    flex-shrink: 0; margin-left: 8px;
-  }
-  .card-item { padding: 0 14px 4px; font-size: 11px; color: var(--sub); }
-  .card-model { padding: 4px 14px 8px; font-size: 14px; font-weight: 600; }
-  .card-desc { padding: 0 14px 10px; font-size: 12px; color: var(--sub); }
-  .card-footer {
-    display: flex; gap: 0; border-top: 1px solid var(--bd);
-  }
-  .stock-pill {
-    flex: 1; text-align: center; padding: 8px 4px;
-    font-size: 11px; font-weight: 600;
-    border-right: 1px solid var(--bd);
-  }
-  .stock-pill:last-child { border-right: none; }
-  .stock-pill .label { font-size: 10px; font-weight: 400; color: var(--sub); display: block; }
-  .stock-pill .val { font-size: 16px; font-weight: 700; display: block; margin-top: 2px; }
-  .stock-ok { color: var(--ok); }
-  .stock-warn { color: var(--warn); }
+/* ── 스크롤 영역 ── */
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
 
-  /* ── 상세 모달 ── */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,0.5);
-    align-items: flex-end;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--panel); border-radius: 20px 20px 0 0;
-    width: 100%; max-height: 85vh; overflow-y: auto;
-    padding: 20px 20px 40px;
-    animation: slideUp 0.25s ease;
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-handle { width: 40px; height: 4px; background: var(--bd); border-radius: 2px; margin: 0 auto 16px; }
-  .modal-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
-  .modal-subtitle { font-size: 12px; color: var(--sub); margin-bottom: 16px; }
-  .modal-row { display: flex; padding: 10px 0; border-bottom: 1px solid var(--bd); align-items: flex-start; }
-  .modal-row:last-child { border-bottom: none; }
-  .modal-key { width: 90px; font-size: 11px; color: var(--sub); font-weight: 600; flex-shrink: 0; padding-top: 1px; }
-  .modal-val { font-size: 13px; font-weight: 500; flex: 1; word-break: break-all; }
-  .stock-big { font-size: 28px; font-weight: 800; }
-  .badge-warn { display: inline-block; background: var(--warn-bg); color: var(--warn); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 4px; }
-  .badge-ok { display: inline-block; background: var(--ok-bg); color: var(--ok); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 4px; }
-  .modal-close { margin-top: 20px; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+/* ════ 화면1: 공장 배치도 ════ */
+#s-home .hdr{padding-top:max(14px,env(safe-area-inset-top));}
+#map-wrap{padding:12px;background:var(--panel);margin:12px;
+  border-radius:14px;border:1px solid var(--bd);
+  box-shadow:0 2px 8px var(--shadow);}
+#map-wrap svg{width:100%;height:auto;display:block;}
+/* SVG */
+.zone-dept{fill:var(--zone);stroke:var(--zone-s);stroke-width:1;
+  cursor:pointer;transition:fill .15s;}
+.zone-dept:active{fill:var(--zone-h);}
+.zone-grass{fill:var(--grass);stroke:var(--grass-s);stroke-width:1;pointer-events:none;}
+.zlabel{font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+  font-size:14px;font-weight:700;text-anchor:middle;dominant-baseline:middle;
+  fill:#1e3a5f;pointer-events:none;}
+.zlabel-sm{font-size:11px;}
+.map-bg{fill:#f1f5f9;}
 
-  /* ── 로딩 ── */
-  #loadingScreen {
-    position: fixed; inset: 0; background: var(--primary);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 999; color: #fff;
-  }
-  #loadingScreen h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-  #loadingScreen p { font-size: 13px; opacity: 0.7; margin-bottom: 30px; }
-  .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+.home-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 16px;}
+.stat-card{background:var(--panel);border-radius:10px;border:1px solid var(--bd);
+  padding:12px 14px;box-shadow:0 1px 3px var(--shadow);}
+.stat-val{font-size:22px;font-weight:800;color:var(--primary);line-height:1;}
+.stat-val.warn{color:#c05621;}.stat-val.danger{color:#c53030;}.stat-val.ok{color:#276749;}
+.stat-lbl{font-size:10px;color:var(--sub);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
 
-  /* ── 재고부족 배너 ── */
-  #shortBanner {
-    display: none; margin: 8px 12px; padding: 10px 14px;
-    background: var(--warn-bg); border: 1px solid #fecaca;
-    border-radius: 10px; color: var(--warn); font-size: 12px; font-weight: 600;
-    cursor: pointer;
-  }
+/* ════ 화면2: 부서 장비 그리드 ════ */
+.dept-info{padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.dept-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+  background:#dbeafe;color:#1e3a8a;}
+.dept-badge.warn{background:#fef2f2;color:#c53030;}
+.eq-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;}
+.eq-card{background:var(--panel);border-radius:12px;border:1px solid var(--bd);
+  padding:14px 12px;box-shadow:0 1px 4px var(--shadow);
+  cursor:pointer;transition:transform .1s;position:relative;min-height:72px;
+  display:flex;flex-direction:column;justify-content:space-between;}
+.eq-card:active{transform:scale(.96);}
+.eq-card.short{border-color:#fca5a5;background:#fff8f8;}
+.eq-name{font-size:13px;font-weight:700;color:var(--primary);line-height:1.3;word-break:break-all;}
+.eq-cnt{font-size:11px;color:var(--sub);margin-top:4px;}
+.eq-short-badge{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;
+  background:var(--warn-bg);color:var(--warn);padding:2px 7px;border-radius:10px;}
+
+/* ════ 화면3: SPL 리스트 ════ */
+.spl-search-bar{padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--bd);flex-shrink:0;}
+.spl-search-inner{display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1.5px solid var(--bd);border-radius:10px;padding:8px 12px;}
+.spl-search-inner:focus-within{border-color:var(--blue);}
+.spl-input{flex:1;border:none;background:transparent;font-size:15px;outline:none;color:var(--text);}
+.spl-clear{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;padding:0;}
+.spl-meta{font-size:11px;color:var(--sub);padding:4px 12px 0;flex-shrink:0;}
+
+.spl-item{background:var(--panel);margin:6px 10px;border-radius:12px;
+  border:1px solid var(--bd);overflow:hidden;box-shadow:0 1px 3px var(--shadow);}
+.spl-item.short{border-color:#fca5a5;}
+.spl-item-head{padding:10px 12px 6px;display:flex;justify-content:space-between;align-items:flex-start;}
+.spl-itemno{font-family:'Consolas',monospace;font-size:12px;font-weight:700;color:var(--primary);}
+.spl-type{font-size:10px;font-weight:700;background:#dbeafe;color:#1e3a8a;
+  padding:2px 7px;border-radius:10px;flex-shrink:0;margin-left:6px;}
+.spl-model{padding:2px 12px 6px;font-size:13px;font-weight:600;color:var(--text);}
+.spl-desc{padding:0 12px 8px;font-size:11px;color:var(--sub);}
+.spl-foot{display:flex;border-top:1px solid var(--bd);}
+.spl-stock-box{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--bd);}
+.spl-stock-box:last-child{border-right:none;}
+.spl-stock-lbl{font-size:10px;color:var(--sub);display:block;}
+.spl-stock-val{font-size:16px;font-weight:800;display:block;margin-top:2px;}
+.stock-ok{color:var(--ok);}.stock-warn{color:var(--warn);}
+
+.list-end{text-align:center;color:var(--sub);font-size:12px;padding:20px;margin-bottom:40px;}
+.empty{text-align:center;padding:60px 20px;color:var(--sub);}
+.empty .icon{font-size:40px;margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -171,201 +133,286 @@
   <div class="spinner"></div>
 </div>
 
-<!-- 헤더 -->
-<header>
-  <h1>SPL 부품 조회</h1>
-  <div class="sub">재고 확인 · 부품 검색</div>
-  <span id="updateBadge">—</span>
-</header>
+<div id="app" style="display:none">
+<div id="screens" class="s0">
 
-<!-- 검색 -->
-<div class="search-box">
-  <div class="search-row">
-    <input id="searchInput" type="search" placeholder="품번 · 장비명 · 부품명 검색..." autocomplete="off" autocorrect="off" spellcheck="false">
-    <button id="clearBtn" onclick="clearSearch()">×</button>
+  <!-- ════ 화면1: 공장 배치도 ════ -->
+  <div class="screen" id="s-home">
+    <div class="hdr">
+      <div style="flex:1">
+        <div class="hdr-title">🏭 TaeguTec SPL 조회</div>
+      </div>
+      <span class="update-badge" id="updateBadge">—</span>
+    </div>
+    <div class="scroll-body">
+      <div id="map-wrap">
+        <svg viewBox="0 0 910 370" xmlns="http://www.w3.org/2000/svg">
+          <rect width="910" height="370" rx="10" class="map-bg"/>
+          <!-- Row 1 -->
+          <rect class="zone-dept" x="10" y="10" width="270" height="100" rx="10" onclick="openDept('IMC ENDMILL')"/>
+          <text class="zlabel" x="145" y="60">IMC ENDMILL</text>
+          <rect class="zone-dept" x="296" y="10" width="100" height="100" rx="10" onclick="openDept('원료')"/>
+          <text class="zlabel" x="346" y="60">원료</text>
+          <rect class="zone-dept" x="406" y="10" width="88" height="100" rx="10" onclick="openDept('MC')"/>
+          <text class="zlabel" x="450" y="60">M/C</text>
+          <rect class="zone-dept" x="504" y="10" width="84" height="100" rx="10" onclick="openDept('금형1')"/>
+          <text class="zlabel" x="546" y="60">금형1</text>
+          <rect class="zone-dept" x="598" y="10" width="88" height="100" rx="10" onclick="openDept('합금1')"/>
+          <text class="zlabel" x="642" y="60">합금1</text>
+          <rect class="zone-dept" x="702" y="10" width="100" height="100" rx="10" onclick="openDept('드릴')"/>
+          <text class="zlabel" x="752" y="60">드릴</text>
+          <rect class="zone-dept" x="812" y="10" width="88" height="100" rx="10" onclick="openDept('세라믹')"/>
+          <text class="zlabel" x="856" y="60">세라믹</text>
+          <!-- Row 2 -->
+          <rect class="zone-dept" x="10" y="126" width="84" height="88" rx="10" onclick="openDept('코팅2')"/>
+          <text class="zlabel" x="52" y="170">코팅2</text>
+          <rect class="zone-dept" x="10" y="224" width="84" height="42" rx="8" onclick="openDept('QA')"/>
+          <text class="zlabel zlabel-sm" x="52" y="245">QA</text>
+          <rect class="zone-dept" x="104" y="126" width="84" height="140" rx="10" onclick="openDept('연삭2')"/>
+          <text class="zlabel" x="146" y="196">연삭2</text>
+          <rect class="zone-dept" x="198" y="126" width="82" height="57" rx="10" onclick="openDept('금형2')"/>
+          <text class="zlabel" x="239" y="155">금형2</text>
+          <rect class="zone-dept" x="198" y="193" width="82" height="57" rx="10" onclick="openDept('합금2')"/>
+          <text class="zlabel" x="239" y="222">합금2</text>
+          <!-- 잔디 -->
+          <rect class="zone-grass" x="296" y="126" width="310" height="140" rx="10"/>
+          <rect class="zone-dept" x="616" y="126" width="76" height="140" rx="10" onclick="openDept('Roll')"/>
+          <text class="zlabel" x="654" y="196">Roll</text>
+          <rect class="zone-dept" x="702" y="126" width="95" height="66" rx="10" onclick="openDept('연삭1')"/>
+          <text class="zlabel" x="749" y="159">연삭1</text>
+          <rect class="zone-dept" x="807" y="126" width="93" height="66" rx="10" onclick="openDept('코팅1')"/>
+          <text class="zlabel" x="853" y="159">코팅1</text>
+          <!-- Row 3 -->
+          <rect class="zone-dept" x="10" y="282" width="270" height="78" rx="10" onclick="openDept('가공')"/>
+          <text class="zlabel" x="145" y="321">가공</text>
+        </svg>
+      </div>
+      <div class="home-stats" id="homeStats"></div>
+    </div>
   </div>
-  <div class="filter-row" id="filterRow">
-    <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">전체</button>
-    <button class="filter-chip" data-filter="low" onclick="setFilter('low',this)">⚠️ 재고부족</button>
+
+  <!-- ════ 화면2: 부서 장비 그리드 ════ -->
+  <div class="screen" id="s-dept">
+    <div class="hdr">
+      <button class="hdr-back" onclick="goBack(1)">‹</button>
+      <div style="flex:1">
+        <div class="hdr-title" id="deptTitle">부서</div>
+      </div>
+      <span class="hdr-sub" id="deptSubtitle"></span>
+    </div>
+    <div class="dept-info">
+      <span id="deptTotalBadge" class="dept-badge"></span>
+      <span id="deptShortBadge" class="dept-badge warn" style="display:none"></span>
+    </div>
+    <div class="scroll-body">
+      <div class="eq-grid" id="eqGrid"></div>
+    </div>
   </div>
-</div>
 
-<div id="statusBar">로딩 중...</div>
-
-<!-- 재고부족 배너 -->
-<div id="shortBanner" onclick="setFilter('low', document.querySelector('[data-filter=low]'))"></div>
-
-<div id="results"><div class="empty"><div class="icon">🔍</div>검색어를 입력하세요</div></div>
-
-<!-- 상세 모달 -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal" id="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="mTitle"></div>
-    <div class="modal-subtitle" id="mSub"></div>
-    <div id="mBody"></div>
-    <button class="modal-close" onclick="closeModalDirect()">닫기</button>
+  <!-- ════ 화면3: SPL 리스트 ════ -->
+  <div class="screen" id="s-spl">
+    <div class="hdr">
+      <button class="hdr-back" onclick="goBack(2)">‹</button>
+      <div style="flex:1">
+        <div class="hdr-title" id="splTitle">장비</div>
+      </div>
+      <span class="hdr-sub" id="splSubtitle"></span>
+    </div>
+    <div class="spl-search-bar">
+      <div class="spl-search-inner">
+        <span>🔍</span>
+        <input class="spl-input" id="splInput" type="search"
+          placeholder="품번 · 부품명 검색..." autocomplete="off" oninput="filterSPL()">
+        <button class="spl-clear" onclick="clearSPL()">×</button>
+      </div>
+    </div>
+    <div class="spl-meta" id="splMeta"></div>
+    <div class="scroll-body" id="splList"></div>
   </div>
-</div>
+
+</div><!-- /screens -->
+</div><!-- /app -->
 
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
 
 let allParts = [];
-let currentFilter = 'all';
-let searchTerm = '';
+let depts = {};
+let currentDept = '';
+let currentEq = '';
+let currentParts = [];
 
-// ── 데이터 로드 ────────────────────────────────────
+/* ── 데이터 로드 ── */
 async function loadData() {
   try {
     const r = await fetch(DATA_URL + '?t=' + Date.now());
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     allParts = data.parts || [];
-    document.getElementById('updateBadge').textContent = '최종 업데이트: ' + (data.updated || '?');
+    depts = data.depts || {};
+    document.getElementById('updateBadge').textContent = data.updated || '';
+    buildHomeStats();
     document.getElementById('loadingScreen').style.display = 'none';
-
-    // 재고부족 배너
-    const shortCnt = allParts.filter(p => p.stock <= p.safety).length;
-    if (shortCnt > 0) {
-      const b = document.getElementById('shortBanner');
-      b.textContent = '⚠️ 재고 부족 자재 ' + shortCnt + '개 — 탭하여 확인';
-      b.style.display = 'block';
-    }
-
-    render();
+    document.getElementById('app').style.display = 'flex';
   } catch(e) {
     document.getElementById('loadingScreen').innerHTML =
-      '<h2 style="font-size:16px">데이터 로드 실패</h2><p style="color:#fca5a5">'+e.message+'</p><p style="margin-top:20px;opacity:0.7">인터넷 연결 및 GitHub Pages 확인</p>';
+      '<h2 style="font-size:15px;padding:0 20px;text-align:center">데이터 로드 실패</h2>' +
+      '<p style="color:#fca5a5;padding:0 20px;text-align:center">' + e.message + '</p>';
   }
 }
 
-// ── 필터/검색 ──────────────────────────────────────
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  render();
+/* ── 홈 통계 ── */
+function buildHomeStats() {
+  const total = allParts.length;
+  const eqs = new Set(allParts.map(p => p.eq)).size;
+  const short = allParts.filter(p => p.stock <= p.safety && p.safety > 0).length;
+  const zero = allParts.filter(p => p.stock === 0).length;
+  document.getElementById('homeStats').innerHTML = [
+    ['전체 파트', total.toLocaleString(), ''],
+    ['장비 수', eqs, ''],
+    ['재고 0', zero.toLocaleString(), 'warn'],
+    ['청구 필요', short, 'danger'],
+  ].map(([l,v,c]) => `<div class="stat-card">
+    <div class="stat-val ${c}">${v}</div>
+    <div class="stat-lbl">${l}</div>
+  </div>`).join('');
 }
 
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  searchTerm = '';
-  document.getElementById('clearBtn').style.display = 'none';
-  render();
-}
+/* ── 부서 열기 ── */
+function openDept(deptKey) {
+  currentDept = deptKey;
+  const equips = depts[deptKey] || [];
 
-document.getElementById('searchInput').addEventListener('input', function() {
-  searchTerm = this.value.trim().toLowerCase();
-  document.getElementById('clearBtn').style.display = searchTerm ? 'block' : 'none';
-  render();
-});
+  // 재고부족 집계
+  const shortByEq = {};
+  const cntByEq = {};
+  allParts.forEach(p => {
+    if (p.eq) {
+      cntByEq[p.eq] = (cntByEq[p.eq] || 0) + 1;
+      if (p.stock <= p.safety && p.safety > 0) {
+        shortByEq[p.eq] = (shortByEq[p.eq] || 0) + 1;
+      }
+    }
+  });
 
-// ── 렌더링 ─────────────────────────────────────────
-function render() {
-  let list = allParts;
+  const totalShort = equips.reduce((s, e) => s + (shortByEq[e] || 0), 0);
 
-  if (currentFilter === 'low') list = list.filter(p => p.stock <= p.safety);
+  document.getElementById('deptTitle').textContent = deptKey === 'MC' ? 'M/C' : deptKey;
+  document.getElementById('deptSubtitle').textContent = equips.length + '개 장비';
+  document.getElementById('deptTotalBadge').textContent = equips.length + '개 장비';
 
-  if (searchTerm) {
-    const terms = searchTerm.split(/\s+/).filter(Boolean);
-    list = list.filter(p => {
-      const hay = [p.eq, p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2].join(' ').toLowerCase();
-      return terms.every(t => hay.includes(t));
-    });
+  const sb = document.getElementById('deptShortBadge');
+  if (totalShort > 0) {
+    sb.textContent = '⚠️ ' + totalShort + '건 부족';
+    sb.style.display = 'inline-block';
+  } else {
+    sb.style.display = 'none';
   }
 
-  const sb = document.getElementById('statusBar');
-  sb.textContent = list.length + '개 결과' + (searchTerm ? ' · "' + searchTerm + '"' : '') + (currentFilter==='low' ? ' · 재고부족' : '');
+  if (equips.length === 0) {
+    document.getElementById('eqGrid').innerHTML =
+      '<div class="empty" style="grid-column:1/-1"><div class="icon">🔧</div><p>장비 정보 없음<br><small>매크로를 다시 실행해주세요</small></p></div>';
+  } else {
+    document.getElementById('eqGrid').innerHTML = equips.map(eq => {
+      const sc = shortByEq[eq] || 0;
+      const cnt = cntByEq[eq] || 0;
+      return `<div class="eq-card${sc > 0 ? ' short' : ''}" onclick="openEquip('${eq.replace(/'/g,"\\'")}')">
+        <div>
+          <div class="eq-name">${esc(eq)}</div>
+          <div class="eq-cnt">파트 ${cnt}개</div>
+        </div>
+        ${sc > 0 ? `<span class="eq-short-badge">⚠️ ${sc}건 부족</span>` : ''}
+      </div>`;
+    }).join('');
+  }
 
-  const el = document.getElementById('results');
-  if (list.length === 0) {
-    el.innerHTML = '<div class="empty"><div class="icon">' + (searchTerm ? '😶' : '✅') + '</div>' + (searchTerm ? '검색 결과 없음' : '재고부족 자재 없음') + '</div>';
+  goTo(1);
+}
+
+/* ── 장비 SPL 열기 ── */
+function openEquip(eqName) {
+  currentEq = eqName;
+  currentParts = allParts.filter(p => p.eq === eqName);
+
+  document.getElementById('splTitle').textContent = eqName;
+  const short = currentParts.filter(p => p.stock <= p.safety && p.safety > 0).length;
+  document.getElementById('splSubtitle').textContent =
+    currentParts.length + '개' + (short > 0 ? ' · ⚠️' + short : '');
+
+  document.getElementById('splInput').value = '';
+  renderSPL(currentParts);
+  goTo(2);
+}
+
+/* ── SPL 렌더링 ── */
+function renderSPL(parts) {
+  const el = document.getElementById('splList');
+  document.getElementById('splMeta').textContent = parts.length + '개 파트';
+
+  if (!parts.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">😶</div><p>검색 결과 없음</p></div>';
     return;
   }
 
-  // 최대 200개만 렌더 (성능)
-  const show = list.slice(0, 200);
-  el.innerHTML = show.map((p, idx) => {
-    const isLow = p.stock <= p.safety;
-    const stockClass = isLow ? 'stock-warn' : 'stock-ok';
+  const show = parts.slice(0, 300);
+  el.innerHTML = show.map(p => {
+    const isLow = p.stock <= p.safety && p.safety > 0;
+    const sc = isLow ? 'stock-warn' : 'stock-ok';
     const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
-    return `<div class="card" onclick="openModal(${allParts.indexOf(p)})">
-      <div class="card-head">
-        <span class="card-eq">${esc(p.eq)}</span>
-        ${p.type ? `<span class="card-type">${esc(p.type)}</span>` : ''}
+    return `<div class="spl-item${isLow ? ' short' : ''}">
+      <div class="spl-item-head">
+        <span class="spl-itemno">${esc(p.itemNo)}</span>
+        ${p.type ? `<span class="spl-type">${esc(p.type)}</span>` : ''}
       </div>
-      <div class="card-item">${esc(p.itemNo)}</div>
-      ${p.model ? `<div class="card-model">${esc(p.model)}</div>` : ''}
-      ${desc ? `<div class="card-desc">${esc(desc)}</div>` : ''}
-      <div class="card-footer">
-        <div class="stock-pill">
-          <span class="label">재고</span>
-          <span class="val ${stockClass}">${p.stock}</span>
+      ${p.model ? `<div class="spl-model">${esc(p.model)}</div>` : ''}
+      ${desc ? `<div class="spl-desc">${esc(desc)}</div>` : ''}
+      <div class="spl-foot">
+        <div class="spl-stock-box">
+          <span class="spl-stock-lbl">재고</span>
+          <span class="spl-stock-val ${sc}">${p.stock}</span>
         </div>
-        <div class="stock-pill">
-          <span class="label">안전재고</span>
-          <span class="val">${p.safety}</span>
+        <div class="spl-stock-box">
+          <span class="spl-stock-lbl">안전재고</span>
+          <span class="spl-stock-val">${p.safety}</span>
         </div>
-        ${isLow ? `<div class="stock-pill"><span class="label">&nbsp;</span><span class="val" style="font-size:12px">⚠️ 부족</span></div>` : ''}
       </div>
     </div>`;
-  }).join('');
-
-  if (list.length > 200) {
-    el.innerHTML += `<div class="empty" style="padding:20px"><p>검색 결과가 많습니다. 검색어를 더 구체적으로 입력하세요.<br>(${list.length}개 중 200개 표시)</p></div>`;
-  }
+  }).join('') + (parts.length > 300 ? `<div class="list-end">300개 표시 중 (전체 ${parts.length}개)</div>` : '<div class="list-end">— 끝 —</div>');
 }
 
-// ── 모달 ───────────────────────────────────────────
-function openModal(idx) {
-  const p = allParts[idx];
-  if (!p) return;
-  const isLow = p.stock <= p.safety;
-
-  document.getElementById('mTitle').textContent = p.model || p.part || p.itemNo;
-  document.getElementById('mSub').textContent = p.eq + (p.type ? ' · ' + p.type : '');
-
-  const rows = [
-    ['품번', p.itemNo],
-    ['장비', p.eq],
-    ['Type', p.type],
-    ['Part', p.part],
-    ['Model', p.model],
-    ['Description 1', p.desc1],
-    ['Description 2', p.desc2],
-  ].filter(([,v]) => v);
-
-  document.getElementById('mBody').innerHTML =
-    rows.map(([k,v]) => `<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${esc(v)}</span></div>`).join('') +
-    `<div class="modal-row">
-      <span class="modal-key">재고</span>
-      <div>
-        <span class="modal-val stock-big ${isLow ? 'stock-warn' : 'stock-ok'}">${p.stock}</span>
-        <span class="modal-val" style="font-size:12px;color:var(--sub)"> / 안전재고 ${p.safety}</span>
-        <br>
-        ${isLow ? `<span class="badge-warn">⚠️ 재고 부족</span>` : `<span class="badge-ok">✓ 재고 정상</span>`}
-      </div>
-    </div>`;
-
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
+/* ── SPL 검색 ── */
+function filterSPL() {
+  const q = document.getElementById('splInput').value.trim().toLowerCase();
+  if (!q) { renderSPL(currentParts); return; }
+  const terms = q.split(/\s+/).filter(Boolean);
+  const filtered = currentParts.filter(p => {
+    const hay = [p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2].join(' ').toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  renderSPL(filtered);
+}
+function clearSPL() {
+  document.getElementById('splInput').value = '';
+  renderSPL(currentParts);
 }
 
-function closeModal(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+/* ── 화면 전환 ── */
+function goTo(n) {
+  document.getElementById('screens').className = 's' + n;
+  // 화면 최상단으로
+  if (n === 1) document.querySelector('#s-dept .scroll-body').scrollTop = 0;
+  if (n === 2) document.getElementById('splList').scrollTop = 0;
 }
-function closeModalDirect() {
-  document.getElementById('modalOverlay').classList.remove('open');
-  document.body.style.overflow = '';
+function goBack(from) {
+  goTo(from - 1);
 }
 
+/* ── 이스케이프 ── */
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// 시작
 loadData();
 </script>
 </body>
