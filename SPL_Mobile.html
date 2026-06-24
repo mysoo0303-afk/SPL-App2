@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SPL 조회</title>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --panel: #ffffff;
+    --primary: #1e3a8a;
+    --accent: #3b82f6;
+    --accent-light: #dbeafe;
+    --text: #1a2e5a;
+    --sub: #64748b;
+    --bd: #e2e8f0;
+    --ok: #16a34a;
+    --warn: #dc2626;
+    --warn-bg: #fef2f2;
+    --ok-bg: #f0fdf4;
+    --shadow: rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  /* ── 헤더 ── */
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 16px 16px 12px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+  header .sub { font-size: 11px; opacity: 0.7; margin-top: 2px; }
+  #updateBadge {
+    display: inline-block; font-size: 10px; background: rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 2px 8px; margin-top: 4px;
+  }
+
+  /* ── 검색 바 ── */
+  .search-box {
+    padding: 12px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--bd);
+    position: sticky; top: 60px; z-index: 99;
+  }
+  .search-row { display: flex; gap: 8px; align-items: center; }
+  #searchInput {
+    flex: 1; padding: 10px 14px; font-size: 15px;
+    border: 1.5px solid var(--bd); border-radius: 10px;
+    outline: none; color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+  #searchInput:focus { border-color: var(--accent); }
+  #clearBtn {
+    display: none; width: 36px; height: 36px;
+    border: none; border-radius: 50%; background: var(--bd);
+    color: var(--sub); font-size: 18px; cursor: pointer;
+    flex-shrink: 0; line-height: 36px; text-align: center;
+  }
+  .filter-row { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0; padding: 5px 12px; font-size: 12px; font-weight: 600;
+    border-radius: 20px; border: 1.5px solid var(--bd);
+    background: var(--panel); color: var(--sub); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* ── 결과 영역 ── */
+  #statusBar {
+    padding: 8px 16px; font-size: 12px; color: var(--sub);
+    background: var(--bg); border-bottom: 1px solid var(--bd);
+  }
+  #results { padding: 8px 12px 80px; }
+  .empty { text-align: center; color: var(--sub); padding: 60px 20px; font-size: 14px; }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ── 카드 ── */
+  .card {
+    background: var(--panel); border-radius: 12px;
+    margin-bottom: 10px; overflow: hidden;
+    box-shadow: 0 1px 4px var(--shadow);
+    border: 1px solid var(--bd);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .card:active { transform: scale(0.98); }
+  .card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 12px 14px 8px;
+  }
+  .card-eq { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .card-type {
+    font-size: 10px; font-weight: 600; background: var(--accent-light);
+    color: var(--accent); padding: 2px 8px; border-radius: 10px;
+    flex-shrink: 0; margin-left: 8px;
+  }
+  .card-item { padding: 0 14px 4px; font-size: 11px; color: var(--sub); }
+  .card-model { padding: 4px 14px 8px; font-size: 14px; font-weight: 600; }
+  .card-desc { padding: 0 14px 10px; font-size: 12px; color: var(--sub); }
+  .card-footer {
+    display: flex; gap: 0; border-top: 1px solid var(--bd);
+  }
+  .stock-pill {
+    flex: 1; text-align: center; padding: 8px 4px;
+    font-size: 11px; font-weight: 600;
+    border-right: 1px solid var(--bd);
+  }
+  .stock-pill:last-child { border-right: none; }
+  .stock-pill .label { font-size: 10px; font-weight: 400; color: var(--sub); display: block; }
+  .stock-pill .val { font-size: 16px; font-weight: 700; display: block; margin-top: 2px; }
+  .stock-ok { color: var(--ok); }
+  .stock-warn { color: var(--warn); }
+
+  /* ── 상세 모달 ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.5);
+    align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel); border-radius: 20px 20px 0 0;
+    width: 100%; max-height: 85vh; overflow-y: auto;
+    padding: 20px 20px 40px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--bd); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+  .modal-subtitle { font-size: 12px; color: var(--sub); margin-bottom: 16px; }
+  .modal-row { display: flex; padding: 10px 0; border-bottom: 1px solid var(--bd); align-items: flex-start; }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-key { width: 90px; font-size: 11px; color: var(--sub); font-weight: 600; flex-shrink: 0; padding-top: 1px; }
+  .modal-val { font-size: 13px; font-weight: 500; flex: 1; word-break: break-all; }
+  .stock-big { font-size: 28px; font-weight: 800; }
+  .badge-warn { display: inline-block; background: var(--warn-bg); color: var(--warn); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 4px; }
+  .badge-ok { display: inline-block; background: var(--ok-bg); color: var(--ok); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-top: 4px; }
+  .modal-close { margin-top: 20px; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+  /* ── 로딩 ── */
+  #loadingScreen {
+    position: fixed; inset: 0; background: var(--primary);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 999; color: #fff;
+  }
+  #loadingScreen h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  #loadingScreen p { font-size: 13px; opacity: 0.7; margin-bottom: 30px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── 재고부족 배너 ── */
+  #shortBanner {
+    display: none; margin: 8px 12px; padding: 10px 14px;
+    background: var(--warn-bg); border: 1px solid #fecaca;
+    border-radius: 10px; color: var(--warn); font-size: 12px; font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div id="loadingScreen">
+  <h2>SPL 조회</h2>
+  <p>데이터 로딩 중...</p>
+  <div class="spinner"></div>
+</div>
+
+<!-- 헤더 -->
+<header>
+  <h1>SPL 부품 조회</h1>
+  <div class="sub">재고 확인 · 부품 검색</div>
+  <span id="updateBadge">—</span>
+</header>
+
+<!-- 검색 -->
+<div class="search-box">
+  <div class="search-row">
+    <input id="searchInput" type="search" placeholder="품번 · 장비명 · 부품명 검색..." autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="clearBtn" onclick="clearSearch()">×</button>
+  </div>
+  <div class="filter-row" id="filterRow">
+    <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">전체</button>
+    <button class="filter-chip" data-filter="low" onclick="setFilter('low',this)">⚠️ 재고부족</button>
+  </div>
+</div>
+
+<div id="statusBar">로딩 중...</div>
+
+<!-- 재고부족 배너 -->
+<div id="shortBanner" onclick="setFilter('low', document.querySelector('[data-filter=low]'))"></div>
+
+<div id="results"><div class="empty"><div class="icon">🔍</div>검색어를 입력하세요</div></div>
+
+<!-- 상세 모달 -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="mTitle"></div>
+    <div class="modal-subtitle" id="mSub"></div>
+    <div id="mBody"></div>
+    <button class="modal-close" onclick="closeModalDirect()">닫기</button>
+  </div>
+</div>
+
+<script>
+const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
+
+let allParts = [];
+let currentFilter = 'all';
+let searchTerm = '';
+
+// ── 데이터 로드 ────────────────────────────────────
+async function loadData() {
+  try {
+    const r = await fetch(DATA_URL + '?t=' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    allParts = data.parts || [];
+    document.getElementById('updateBadge').textContent = '최종 업데이트: ' + (data.updated || '?');
+    document.getElementById('loadingScreen').style.display = 'none';
+
+    // 재고부족 배너
+    const shortCnt = allParts.filter(p => p.stock <= p.safety).length;
+    if (shortCnt > 0) {
+      const b = document.getElementById('shortBanner');
+      b.textContent = '⚠️ 재고 부족 자재 ' + shortCnt + '개 — 탭하여 확인';
+      b.style.display = 'block';
+    }
+
+    render();
+  } catch(e) {
+    document.getElementById('loadingScreen').innerHTML =
+      '<h2 style="font-size:16px">데이터 로드 실패</h2><p style="color:#fca5a5">'+e.message+'</p><p style="margin-top:20px;opacity:0.7">인터넷 연결 및 GitHub Pages 확인</p>';
+  }
+}
+
+// ── 필터/검색 ──────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchTerm = '';
+  document.getElementById('clearBtn').style.display = 'none';
+  render();
+}
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  searchTerm = this.value.trim().toLowerCase();
+  document.getElementById('clearBtn').style.display = searchTerm ? 'block' : 'none';
+  render();
+});
+
+// ── 렌더링 ─────────────────────────────────────────
+function render() {
+  let list = allParts;
+
+  if (currentFilter === 'low') list = list.filter(p => p.stock <= p.safety);
+
+  if (searchTerm) {
+    const terms = searchTerm.split(/\s+/).filter(Boolean);
+    list = list.filter(p => {
+      const hay = [p.eq, p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2].join(' ').toLowerCase();
+      return terms.every(t => hay.includes(t));
+    });
+  }
+
+  const sb = document.getElementById('statusBar');
+  sb.textContent = list.length + '개 결과' + (searchTerm ? ' · "' + searchTerm + '"' : '') + (currentFilter==='low' ? ' · 재고부족' : '');
+
+  const el = document.getElementById('results');
+  if (list.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="icon">' + (searchTerm ? '😶' : '✅') + '</div>' + (searchTerm ? '검색 결과 없음' : '재고부족 자재 없음') + '</div>';
+    return;
+  }
+
+  // 최대 200개만 렌더 (성능)
+  const show = list.slice(0, 200);
+  el.innerHTML = show.map((p, idx) => {
+    const isLow = p.stock <= p.safety;
+    const stockClass = isLow ? 'stock-warn' : 'stock-ok';
+    const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
+    return `<div class="card" onclick="openModal(${allParts.indexOf(p)})">
+      <div class="card-head">
+        <span class="card-eq">${esc(p.eq)}</span>
+        ${p.type ? `<span class="card-type">${esc(p.type)}</span>` : ''}
+      </div>
+      <div class="card-item">${esc(p.itemNo)}</div>
+      ${p.model ? `<div class="card-model">${esc(p.model)}</div>` : ''}
+      ${desc ? `<div class="card-desc">${esc(desc)}</div>` : ''}
+      <div class="card-footer">
+        <div class="stock-pill">
+          <span class="label">재고</span>
+          <span class="val ${stockClass}">${p.stock}</span>
+        </div>
+        <div class="stock-pill">
+          <span class="label">안전재고</span>
+          <span class="val">${p.safety}</span>
+        </div>
+        ${isLow ? `<div class="stock-pill"><span class="label">&nbsp;</span><span class="val" style="font-size:12px">⚠️ 부족</span></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  if (list.length > 200) {
+    el.innerHTML += `<div class="empty" style="padding:20px"><p>검색 결과가 많습니다. 검색어를 더 구체적으로 입력하세요.<br>(${list.length}개 중 200개 표시)</p></div>`;
+  }
+}
+
+// ── 모달 ───────────────────────────────────────────
+function openModal(idx) {
+  const p = allParts[idx];
+  if (!p) return;
+  const isLow = p.stock <= p.safety;
+
+  document.getElementById('mTitle').textContent = p.model || p.part || p.itemNo;
+  document.getElementById('mSub').textContent = p.eq + (p.type ? ' · ' + p.type : '');
+
+  const rows = [
+    ['품번', p.itemNo],
+    ['장비', p.eq],
+    ['Type', p.type],
+    ['Part', p.part],
+    ['Model', p.model],
+    ['Description 1', p.desc1],
+    ['Description 2', p.desc2],
+  ].filter(([,v]) => v);
+
+  document.getElementById('mBody').innerHTML =
+    rows.map(([k,v]) => `<div class="modal-row"><span class="modal-key">${k}</span><span class="modal-val">${esc(v)}</span></div>`).join('') +
+    `<div class="modal-row">
+      <span class="modal-key">재고</span>
+      <div>
+        <span class="modal-val stock-big ${isLow ? 'stock-warn' : 'stock-ok'}">${p.stock}</span>
+        <span class="modal-val" style="font-size:12px;color:var(--sub)"> / 안전재고 ${p.safety}</span>
+        <br>
+        ${isLow ? `<span class="badge-warn">⚠️ 재고 부족</span>` : `<span class="badge-ok">✓ 재고 정상</span>`}
+      </div>
+    </div>`;
+
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// 시작
+loadData();
+</script>
+</body>
+</html>
