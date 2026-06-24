@@ -1,5 +1,5 @@
 {
-  "updated": "2026-06-24 18:20",
+  "updated": "2026-06-24 18:26",
   "parts": [
     {"eq":"항자력테스터","itemNo":"6242056","type":"Mech","part":"Controller","model":"PUMP FOR HC CONTROLLER","desc1":"PUMP ASS'Y SUKJIN","desc2":"HC (항자력) 측정기 Chiller Pump","stock":0,"safety":0},
     {"eq":"항자력테스터","itemNo":"6248480","type":"Elec","part":"Switch","model":"MAGNET SWITCH LC1D18M7","desc1":"AC220V 18A 1A1B","desc2":"(HC) Magnet Switch","stock":4,"safety":0},
