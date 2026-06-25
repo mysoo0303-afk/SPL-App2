@@ -1,1673 +1,507 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SPL 자재 관리 시스템</title>
-<script>
-(function(){
-  var s=['./xlsx.full.min.js','https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
-         'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-         'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'];
-  var i=0;
-  function n(){
-    if(i>=s.length){document.getElementById('xErr').style.display='flex';return;}
-    var t=document.createElement('script');t.src=s[i++];
-    t.onload=function(){var e=document.getElementById('xErr');if(e)e.style.display='none';};
-    t.onerror=n;document.head.appendChild(t);
-  }n();
-})();
-</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SPL 조회</title>
 <style>
-/* ── Theme Variables ── */
 :root {
-  --bg:#eef2f9; --panel:#fff; --panel2:#fafbff;
-  --bd:#e4eaf4; --bd2:#dde3ef;
-  --txt:#1a202c; --txt2:#2d3748; --muted:#7a8aa0; --muted2:#9aabbf;
-  --navy:#1a2e5a; --accent:#2a5298; --blue:#3b82f6;
-  --shadow:rgba(0,0,0,.05); --shadow2:rgba(0,0,0,.10);
+  --bg:#eef2f9; --panel:#fff; --primary:#1a2e5a; --accent:#2a5298;
+  --blue:#3b82f6; --text:#1a202c; --sub:#64748b; --bd:#e2e8f0;
   --zone:#daeaf7; --zone-h:#b8d9f0; --zone-s:#a8c8e8;
   --grass:#d4edda; --grass-s:#a8d5b5;
-  --zlabel:#1e3a5f; --map-bg:#f1f5f9;
-  --hdr1:#1a2e5a; --hdr2:#2a5298;
+  --ok:#16a34a; --warn:#dc2626; --warn-bg:#fef2f2; --ok-bg:#f0fdf4;
+  --shadow:rgba(0,0,0,0.07);
 }
-[data-theme="dark"] {
-  --bg:#0b0f1a; --panel:#141b2d; --panel2:#1a2238;
-  --bd:#1f293d; --bd2:#263047;
-  --txt:#f1f5f9; --txt2:#e2e8f0; --muted:#94a3b8; --muted2:#7a8aa0;
-  --navy:#60a5fa; --accent:#93c5fd; --blue:#3b82f6;
-  --shadow:rgba(0,0,0,.35); --shadow2:rgba(0,0,0,.5);
-  --zone:rgba(56,189,248,.15); --zone-h:rgba(56,189,248,.28); --zone-s:#38bdf8;
-  --grass:rgba(52,211,153,.1); --grass-s:#34d399;
-  --zlabel:#e2f0ff; --map-bg:#0c101b;
-  --hdr1:#0f1c3d; --hdr2:#1a3a7a;
-}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden;}
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
-  background:var(--bg);color:var(--txt);font-size:13px;transition:background .25s,color .25s;}
-
-/* ── Header ── */
-.hdr{position:sticky;top:0;z-index:300;height:56px;
-  background:linear-gradient(120deg,var(--hdr1) 0%,var(--hdr2) 100%);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 28px;box-shadow:0 2px 16px rgba(0,0,0,.28);}
-.hdr-brand{display:flex;align-items:center;gap:11px;color:#fff;}
-.hdr-title{font-size:16px;font-weight:700;letter-spacing:-.3px;}
-.hdr-erp{font-size:11px;opacity:.65;background:rgba(255,255,255,.12);
-  padding:2px 9px;border-radius:10px;}
-.hdr-right{display:flex;align-items:center;gap:10px;}
-.hdr-meta{font-size:11px;color:rgba(255,255,255,.6);}
-.btn-theme{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);
-  color:#fff;padding:5px 13px;border-radius:20px;font-size:12px;
-  font-family:inherit;font-weight:600;cursor:pointer;transition:background .2s;}
-.btn-theme:hover{background:rgba(255,255,255,.22);}
-.btn-file{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);
-  color:#fff;padding:6px 16px;border-radius:8px;font-size:12px;
-  font-family:inherit;font-weight:600;cursor:pointer;transition:background .2s;}
-.btn-file:hover{background:rgba(255,255,255,.25);}
-
-/* ── Nav ── */
-.nav{background:var(--panel);border-bottom:1px solid var(--bd);padding:0 28px;
-  display:none;gap:0;position:sticky;top:56px;z-index:290;
-  transition:background .25s,border-color .25s;}
-.nav.on{display:flex;}
-.ntab{padding:13px 20px;border:none;background:none;font-size:13px;font-weight:600;
-  color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;
-  margin-bottom:-1px;transition:color .15s,border-color .15s;
-  font-family:inherit;display:flex;align-items:center;gap:7px;}
-.ntab:hover{color:var(--accent);}
-.ntab.on{color:var(--navy);border-bottom-color:var(--navy);}
-.nbadge{background:#e53e3e;color:#fff;border-radius:9px;padding:1px 7px;
-  font-size:11px;font-weight:700;min-width:20px;text-align:center;}
-
-/* ── Main ── */
-.main{padding:24px 28px;max-width:1440px;margin:0 auto;}
-.view{display:none;}.view.on{display:block;}
-
-/* ── xlsx error ── */
-#xErr{display:none;position:fixed;inset:0;z-index:9999;
-  background:rgba(0,0,0,.55);align-items:center;justify-content:center;}
-.xerr{background:#fff;border-radius:16px;padding:36px 40px;max-width:480px;
-  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);}
-.xerr h2{font-size:16px;color:#1a2e5a;margin:16px 0 10px;}
-.xerr p{font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:16px;}
-.xerr ol{text-align:left;font-size:13px;line-height:2;padding-left:20px;margin-bottom:18px;}
-.xerr-dl{display:inline-block;background:#1a2e5a;color:#fff;text-decoration:none;
-  padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;}
-
-/* ── Welcome ── */
-.welcome{display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:100px 20px;text-align:center;}
-.welcome h2{font-size:22px;font-weight:700;color:var(--navy);margin-bottom:10px;}
-.welcome p{color:var(--muted);margin-bottom:32px;font-size:14px;line-height:1.6;}
-.btn-primary{background:var(--navy);color:#fff;border:none;padding:12px 30px;
-  border-radius:10px;font-size:14px;font-family:inherit;font-weight:700;
-  cursor:pointer;transition:background .2s;box-shadow:0 4px 14px rgba(26,46,90,.3);}
-.btn-primary:hover{background:var(--accent);}
-
-/* ── Loading ── */
-.loading-c{display:flex;flex-direction:column;align-items:center;padding:100px 20px;}
-.spinner{width:40px;height:40px;border:3px solid var(--bd);border-top-color:var(--navy);
-  border-radius:50%;animation:spin .75s linear infinite;margin-bottom:20px;}
+/* ── 로딩 ── */
+#loadingScreen{position:fixed;inset:0;background:var(--primary);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;z-index:999;color:#fff;}
+#loadingScreen h2{font-size:20px;font-weight:700;margin-bottom:8px;}
+#loadingScreen p{font-size:13px;opacity:.7;margin-bottom:28px;}
+.spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
-.prog-bar{width:280px;height:5px;background:var(--bd);border-radius:3px;margin:14px 0 8px;}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--navy),var(--blue));
-  border-radius:3px;transition:width .3s;}
-.load-txt{font-size:14px;color:var(--txt2);font-weight:600;}
-.load-det{font-size:11px;color:var(--muted2);margin-top:4px;max-width:300px;text-align:center;}
 
-/* ── Stats ── */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-  gap:12px;margin-bottom:0;}
-.scard{background:var(--panel);border-radius:12px;padding:16px 18px;
-  border:1px solid var(--bd);box-shadow:0 1px 4px var(--shadow);
-  transition:background .25s,border-color .25s;}
-.scard .lbl{font-size:10px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.6px;color:var(--muted2);margin-bottom:9px;}
-.scard .val{font-size:26px;font-weight:800;color:var(--navy);line-height:1;}
-.scard .val.danger{color:#c53030;}.scard .val.warn{color:#c05621;}.scard .val.ok{color:#276749;}
-.scard .sub{font-size:11px;color:var(--muted2);margin-top:5px;}
+/* ── 화면 슬라이드 ── */
+#app{position:fixed;inset:0;overflow:hidden;}
+.screen{width:100vw;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:var(--bg);}
+#screens{display:flex;width:300vw;height:100%;
+  transition:transform .3s ease;}
+#screens.s0{transform:translateX(0);}
+#screens.s1{transform:translateX(-100vw);}
+#screens.s2{transform:translateX(-200vw);}
 
-/* ── Factory Map (Home) ── */
-.home-toolbar{display:flex;justify-content:space-between;align-items:center;
-  margin-bottom:14px;}
-.home-title{font-size:16px;font-weight:800;color:var(--navy);}
-.home-actions{display:flex;align-items:center;gap:10px;}
-.btn-shortage{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;
-  cursor:pointer;border:1.5px solid #fecaca;background:#fff1f2;color:#be123c;
-  transition:background .15s;font-family:inherit;}
-.btn-shortage:hover{background:#ffe4e6;}
-.last-update{font-size:12px;color:var(--muted);background:var(--panel);
-  border:1px solid var(--bd);padding:6px 14px;border-radius:8px;font-weight:600;}
-.map-card{background:var(--panel);border:1px solid var(--bd);border-radius:14px;
-  padding:20px;box-shadow:0 2px 12px var(--shadow);margin-bottom:0;
-  transition:background .25s,border-color .25s;}
-.map-card svg{width:100%;height:auto;display:block;}
-/* SVG zone styles */
+/* ── 공통 헤더 ── */
+.hdr{background:var(--primary);color:#fff;padding:14px 16px 12px;
+  flex-shrink:0;display:flex;align-items:center;gap:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.hdr-back{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:32px;height:32px;border-radius:8px;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.hdr-title{font-size:16px;font-weight:700;flex:1;}
+.hdr-sub{font-size:11px;opacity:.65;white-space:nowrap;}
+.update-badge{font-size:10px;background:rgba(255,255,255,.18);
+  border-radius:20px;padding:2px 8px;white-space:nowrap;}
+
+/* ── 스크롤 영역 ── */
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+.scroll-body::-webkit-scrollbar{display:none;}
+
+/* ════ 화면1: 공장 배치도 ════ */
+#s-home .hdr{padding-top:max(14px,env(safe-area-inset-top));}
+#map-wrap{padding:12px;background:var(--panel);margin:12px;
+  border-radius:14px;border:1px solid var(--bd);
+  box-shadow:0 2px 8px var(--shadow);}
+#map-wrap svg{width:100%;height:auto;display:block;}
+/* SVG */
 .zone-dept{fill:var(--zone);stroke:var(--zone-s);stroke-width:1;
-  cursor:pointer;transition:fill .15s,stroke .15s;}
-.zone-dept:hover{fill:var(--zone-h);}
+  cursor:pointer;transition:fill .15s;}
+.zone-dept:active{fill:var(--zone-h);}
 .zone-grass{fill:var(--grass);stroke:var(--grass-s);stroke-width:1;pointer-events:none;}
-.zlabel{font-family:'Malgun Gothic','Segoe UI',sans-serif;font-size:14px;font-weight:700;
-  text-anchor:middle;dominant-baseline:middle;fill:var(--zlabel);pointer-events:none;}
-.zlabel-sm{font-size:12px;}
-.map-bg{fill:var(--map-bg);}
+.zlabel{font-family:'Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+  font-size:14px;font-weight:700;text-anchor:middle;dominant-baseline:middle;
+  fill:#1e3a5f;pointer-events:none;}
+.zlabel-sm{font-size:11px;}
+.map-bg{fill:#f1f5f9;}
 
-/* ── Section header ── */
-.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.sec-title{font-size:15px;font-weight:700;color:var(--navy);}
-.sec-sub{font-size:12px;color:var(--muted);}
 
-/* ── Breadcrumb ── */
-.bc{display:none;align-items:center;gap:6px;padding:0 0 18px;font-size:13px;}
-.bc.on{display:flex;}
-.bc-link{color:var(--accent);cursor:pointer;font-weight:600;}
-.bc-link:hover{text-decoration:underline;}
-.bc-sep{color:var(--muted2);}
-.bc-cur{color:var(--navy);font-weight:700;}
+/* ════ 화면2: 부서 장비 그리드 / 배치도 ════ */
+.dept-info{padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.dept-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
+  background:#dbeafe;color:#1e3a8a;}
+.dept-badge.warn{background:#fef2f2;color:#c53030;}
+/* 카드 그리드 (fallback) */
+.eq-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;}
+.eq-card{background:var(--panel);border-radius:12px;border:1px solid var(--bd);
+  padding:14px 12px;box-shadow:0 1px 4px var(--shadow);
+  cursor:pointer;transition:transform .1s;position:relative;min-height:72px;
+  display:flex;flex-direction:column;justify-content:space-between;}
+.eq-card:active{transform:scale(.96);}
+.eq-card.short{border-color:#fca5a5;background:#fff8f8;}
+.eq-name{font-size:13px;font-weight:700;color:var(--primary);line-height:1.3;word-break:break-all;}
+.eq-cnt{font-size:11px;color:var(--sub);margin-top:4px;}
+.eq-short-badge{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;
+  background:var(--warn-bg);color:var(--warn);padding:2px 7px;border-radius:10px;}
+/* 배치도 테이블 */
+.section-label{font-size:11px;font-weight:700;color:var(--sub);
+  padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.5px;}
+.layout-wrap{overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:8px;margin:0 8px 8px;border-radius:12px;
+  border:1px solid var(--bd);background:var(--panel);
+  box-shadow:0 1px 4px var(--shadow);position:relative;}
+.layout-table{border-collapse:collapse;font-size:12px;}
+.layout-table td{border:1px solid #c8d8e8;padding:6px 8px;
+  white-space:nowrap;vertical-align:middle;text-align:center;
+  min-width:64px;height:44px;}
+.layout-table td.lc{background:#dbeafe;color:#1e3a8a;font-weight:700;
+  cursor:pointer;border-color:#93c5fd;}
+.layout-table td.lc:active{background:#93c5fd;}
+.layout-table td.lc.lshort{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
 
-/* ── 2D Dept Layout ── */
-.layout-wrap{overflow-x:auto;overflow-y:visible;border-radius:12px;border:1px solid var(--bd);
-  background:var(--panel);box-shadow:0 1px 4px var(--shadow);
-  cursor:grab;user-select:none;}
-.layout-wrap.dragging{cursor:grabbing;}
-.layout-wrap::-webkit-scrollbar{height:6px;}
-.layout-wrap::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
-.dept-layout{width:100%;border-collapse:collapse;min-width:500px;}
-.dept-layout td{border:1px solid var(--bd2);padding:5px 7px;
-  text-align:center;vertical-align:middle;font-size:12px;
-  transition:background .12s;min-width:72px;}
-/* layout-hdr: bg+color set via inline style (pastel) — dark mode just dims slightly */
-.layout-hdr{font-weight:700;font-size:13px;letter-spacing:.3px;}
-[data-theme="dark"] .layout-hdr{opacity:.82;}
-/* layout-equip: bg+color set via inline style per base-name — hover adds ring */
-.layout-equip{cursor:pointer;font-weight:600;}
-.layout-equip:hover{filter:brightness(.92);box-shadow:inset 0 0 0 2px rgba(0,0,0,.18);}
-.layout-short{background:#fff5f5!important;color:#c53030!important;border-color:#fca5a5!important;}
-[data-theme="dark"] .layout-short{background:rgba(239,68,68,.25)!important;color:#fca5a5!important;}
-.layout-short:hover{filter:brightness(.94)!important;}
-.cell-name{font-weight:700;line-height:1.3;}
-.cell-badge{font-size:10px;color:#c53030;font-weight:700;margin-top:3px;}
-/* empty cell: invisible */
-.layout-empty{background:var(--bg)!important;border-color:var(--bg)!important;}
-/* non-linked label cell: no click, light appearance */
-.layout-label{color:var(--txt2);font-size:12px;background:var(--panel)!important;font-weight:500;}
+/* ════ 화면3: SPL 리스트 ════ */
+.spl-search-bar{padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--bd);flex-shrink:0;}
+.spl-search-inner{display:flex;align-items:center;gap:8px;
+  background:var(--bg);border:1.5px solid var(--bd);border-radius:10px;padding:8px 12px;}
+.spl-search-inner:focus-within{border-color:var(--blue);}
+.spl-input{flex:1;border:none;background:transparent;font-size:15px;outline:none;color:var(--text);}
+.spl-clear{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;padding:0;}
+.spl-meta{font-size:11px;color:var(--sub);padding:4px 12px 0;flex-shrink:0;}
 
-/* ── SPL Modal ── */
-.spl-ov{display:none;position:fixed;inset:0;z-index:500;
-  background:rgba(11,23,56,.45);backdrop-filter:blur(4px);
-  align-items:center;justify-content:center;}
-.spl-ov.on{display:flex;}
-.spl-box{width:96vw;max-width:1480px;height:90vh;background:var(--panel);
-  border-radius:16px;display:flex;flex-direction:column;overflow:hidden;
-  box-shadow:0 24px 64px rgba(0,0,0,.4);border:1px solid var(--bd);
-  transition:background .25s;}
-.spl-head{display:flex;align-items:center;gap:12px;padding:13px 18px;
-  border-bottom:1px solid var(--bd);flex-shrink:0;background:var(--panel2);}
-.spl-bc{flex:1;display:flex;align-items:center;gap:5px;font-size:13px;overflow:hidden;}
-.spl-bc .bc-cur{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.spl-search{width:200px;padding:7px 13px;border:1.5px solid var(--bd2);
-  border-radius:8px;font-size:13px;font-family:inherit;outline:none;
-  background:var(--bg);color:var(--txt);flex-shrink:0;transition:border-color .2s;}
-.spl-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(42,82,152,.12);}
-.btn-close{background:none;border:1.5px solid var(--bd2);color:var(--muted);
-  border-radius:8px;padding:5px 12px;font-size:16px;line-height:1;
-  cursor:pointer;flex-shrink:0;transition:all .15s;}
-.btn-close:hover{border-color:#e53e3e;color:#e53e3e;}
-.spl-stats{padding:9px 16px;background:var(--panel2);border-bottom:1px solid var(--bd);
-  display:flex;align-items:center;gap:14px;font-size:12px;color:var(--txt2);flex-shrink:0;}
-.spl-short-b{background:#fff5f5;color:#c53030;font-weight:700;border-radius:6px;padding:2px 10px;}
-.spl-ok-b{background:#f0fdf4;color:#276749;font-weight:600;border-radius:6px;padding:2px 10px;}
-[data-theme="dark"] .spl-short-b{background:rgba(239,68,68,.15);color:#f87171;}
-[data-theme="dark"] .spl-ok-b{background:rgba(39,103,73,.2);color:#6ee7b7;}
-.btn-shortfirst{margin-left:auto;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;
-  font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;cursor:pointer;}
-.btn-shortfirst:hover{background:#ffedd5;}
-[data-theme="dark"] .btn-shortfirst{background:rgba(194,65,12,.2);color:#fb923c;border-color:rgba(194,65,12,.4);}
-.sort-ind{font-size:10px;opacity:.7;}
-/* spl content = table + side panel */
-.spl-content{display:flex;flex:1;overflow:hidden;}
-.spl-body{flex:1;overflow:auto;}
-.spl-body::-webkit-scrollbar{width:7px;height:7px;}
-.spl-body::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:4px;}
-/* ── SPL Side Dashboard ── */
-.spl-dash{width:260px;flex-shrink:0;border-left:1px solid var(--bd);
-  background:var(--panel2);overflow-y:auto;display:flex;flex-direction:column;gap:0;
-  transition:background .25s,border-color .25s;}
-.spl-dash::-webkit-scrollbar{width:5px;}
-.spl-dash::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px;}
-.dash-sec{padding:14px 16px;border-bottom:1px solid var(--bd);}
-.dash-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
-  color:var(--muted2);margin-bottom:10px;}
-.dash-kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;}
-.dash-kpi-card{background:var(--panel);border:1px solid var(--bd);border-radius:10px;
-  padding:10px 12px;text-align:center;}
-.dash-kpi-card .kv{font-size:22px;font-weight:800;line-height:1;}
-.dash-kpi-card .kl{font-size:10px;color:var(--muted2);margin-top:3px;font-weight:600;}
-.kv-ok{color:#276749;}[data-theme="dark"] .kv-ok{color:#6ee7b7;}
-.kv-zero{color:#c2410c;}[data-theme="dark"] .kv-zero{color:#fb923c;}
-.kv-short{color:#c53030;}[data-theme="dark"] .kv-short{color:#f87171;}
-.kv-total{color:var(--navy);}
-/* donut chart */
-.dash-donut{display:flex;justify-content:center;padding:4px 0 8px;}
-.dash-donut svg{width:100px;height:100px;}
-.dash-legend{display:flex;flex-direction:column;gap:5px;}
-.dash-leg-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--txt2);}
-.dash-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-/* shortage list in dash */
-.dash-short-list{display:flex;flex-direction:column;gap:6px;}
-.dash-short-item{background:var(--panel);border:1px solid #fca5a5;border-radius:8px;
-  padding:8px 10px;font-size:11px;}
-.dash-short-item .dsi-no{font-family:'Consolas',monospace;font-weight:700;color:#c53030;font-size:11px;}
-[data-theme="dark"] .dash-short-item{border-color:rgba(239,68,68,.3);}
-[data-theme="dark"] .dash-short-item .dsi-no{color:#f87171;}
-.dash-short-item .dsi-desc{color:var(--txt2);margin-top:2px;line-height:1.3;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-short-item .dsi-stock{margin-top:4px;font-weight:700;color:#9b1c1c;font-size:11px;}
-[data-theme="dark"] .dash-short-item .dsi-stock{color:#fca5a5;}
-.dash-none{font-size:12px;color:var(--muted2);text-align:center;padding:20px 0;}
-/* toggle dash btn */
-.btn-dash{background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);
-  color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;
-  cursor:pointer;flex-shrink:0;font-family:inherit;transition:background .15s;}
-.btn-dash:hover{background:rgba(255,255,255,.22);}
-.btn-dash.off{background:rgba(42,82,152,.12);border-color:var(--bd2);color:var(--muted);}
+/* ── SPL 리스트 (compact) ── */
+.spl-list-wrap{background:var(--panel);margin:8px 10px 16px;
+  border-radius:12px;border:1px solid var(--bd);overflow:hidden;
+  box-shadow:0 1px 3px var(--shadow);}
+.spl-item{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;
+  flex-direction:column;gap:3px;}
+.spl-item:last-child{border-bottom:none;}
+.spl-item.short{border-left:3px solid var(--warn);}
+.spl-main-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.spl-itemno{font-family:'Consolas',monospace;font-size:13px;font-weight:700;
+  color:var(--primary);flex-shrink:0;}
+.spl-stk{font-size:17px;font-weight:800;flex-shrink:0;min-width:32px;text-align:right;}
+.spl-model-line{font-size:12px;font-weight:600;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.spl-desc{font-size:11px;color:var(--sub);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
+.stock-ok{color:var(--ok);}.stock-warn{color:var(--warn);}
 
-/* ── Table ── */
-table{width:100%;border-collapse:collapse;}
-thead th{background:var(--navy);color:rgba(255,255,255,.85);font-size:11px;
-  font-weight:700;letter-spacing:.4px;text-transform:uppercase;
-  padding:11px 14px;text-align:left;white-space:nowrap;
-  position:sticky;top:0;z-index:5;
-  border-right:1px solid rgba(255,255,255,.12);}
-thead th:last-child{border-right:none;}
-thead th.c{text-align:center;}
-.table-card{background:var(--panel);border-radius:14px;border:1px solid var(--bd);
-  box-shadow:0 1px 4px var(--shadow);overflow:hidden;
-  transition:background .25s,border-color .25s;}
-.table-card table thead th{top:0;}
-tbody tr{border-bottom:1px solid var(--bd);transition:background .1s;}
-tbody tr:last-child{border-bottom:none;}
-tbody tr:hover{background:var(--panel2)!important;}
-tbody tr.row-zero{background:#fff7f7;}
-[data-theme="dark"] tbody tr.row-zero{background:rgba(239,68,68,.05);}
-tbody tr.row-short{background:#fff0f0;}
-[data-theme="dark"] tbody tr.row-short{background:rgba(239,68,68,.09);}
-/* shortage page — even lighter red */
-#shortageOut tbody tr.row-short{background:#fff7f7;}
-[data-theme="dark"] #shortageOut tbody tr.row-short{background:rgba(239,68,68,.04);}
-tbody td{padding:9px 14px;color:var(--txt2);vertical-align:middle;
-  border-right:1px solid var(--bd);}
-tbody td:last-child{border-right:none;}
-tbody td.c{text-align:center;}
-.item-no{font-family:'Consolas',monospace;font-weight:700;color:var(--navy);font-size:12px;}
-.chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
-.chip-ok{background:#e6fffa;color:#234e52;}
-.chip-zero{background:#fffbeb;color:#744210;}
-.chip-short{background:#fff5f5;color:#742a2a;}
-mark{background:#fef9c3;color:inherit;border-radius:2px;padding:0 1px;}
-
-/* ── Search view ── */
-.search-wrap{background:var(--panel);border-radius:14px;border:1px solid var(--bd);
-  box-shadow:0 1px 4px var(--shadow);display:flex;align-items:center;
-  gap:12px;padding:12px 18px;margin-bottom:12px;transition:background .25s,border-color .25s;}
-.search-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(42,82,152,.1);}
-.s-icon{font-size:16px;color:var(--muted2);flex-shrink:0;}
-.s-input{flex:1;border:none;outline:none;font-size:15px;font-family:inherit;
-  color:var(--txt);background:transparent;}
-.s-input::placeholder{color:var(--muted2);}
-.s-clear{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:16px;line-height:1;}
-.s-clear:hover{color:var(--muted);}
-.s-meta{font-size:12px;color:var(--muted2);margin-bottom:12px;min-height:18px;}
-
-/* ── Empty state ── */
-.empty-state{text-align:center;padding:60px 20px;color:var(--muted2);}
-.empty-state .ei{font-size:36px;margin-bottom:12px;}
-.empty-state p{font-size:13px;}
-
-/* ── Home dept wrapper ── */
-#view-home .home-dept{margin-top:20px;}
-
-/* ── Dept sub-tabs ── */
-.dept-tabs{display:flex;gap:0;border-bottom:2px solid var(--bd);margin-bottom:16px;}
-.dtab{padding:9px 20px;border:none;background:none;font-size:13px;font-weight:600;
-  color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;
-  font-family:inherit;transition:color .15s,border-color .15s;}
-.dtab:hover{color:var(--accent);}
-.dtab.on{color:var(--navy);border-bottom-color:var(--navy);}
-
-/* ── Equipment list table wrapper ── */
-.equip-list-wrap{display:flex;gap:16px;align-items:flex-start;}
-.equip-list-table{flex:1;overflow:auto;border-radius:12px;border:1px solid var(--bd);
-  background:var(--panel);box-shadow:0 2px 8px var(--shadow);
-  max-height:calc(100vh - 220px);}  /* enables sticky header */
-.equip-list-table table{min-width:600px;border-collapse:collapse;width:100%;}
-/* sticky header */
-.equip-list-table thead th{background:#dbeafe;color:#1e3a8a;
-  font-size:11px;font-weight:700;letter-spacing:.5px;
-  text-transform:uppercase;padding:12px 14px;border-right:1px solid rgba(30,58,138,.12);
-  position:sticky;top:0;z-index:10;white-space:nowrap;text-align:center;}
-[data-theme="dark"] .equip-list-table thead th{background:#1e3a8a;color:#bfdbfe;
-  border-right-color:rgba(191,219,254,.15);}
-.equip-list-table thead th:last-child{border-right:none;}
-.equip-list-table tbody tr:hover td{filter:brightness(.94);}
-.equip-list-table tbody td{padding:9px 13px;font-size:12px;color:#1a2e5a;
-  border-bottom:1px solid rgba(0,0,0,.06);border-right:1px solid rgba(0,0,0,.06);
-  vertical-align:middle;text-align:center;}
-.equip-list-table tbody td:last-child{border-right:none;}
-/* merged group cell */
-.equip-list-table td.merge-cell{font-weight:800;font-size:13px;
-  border-right:3px solid rgba(0,0,0,.15)!important;text-align:center;
-  vertical-align:middle;letter-spacing:-.3px;}
-/* group separator */
-.equip-list-table tr.group-start td{border-top:2px solid rgba(0,0,0,.12)!important;}
-/* ── Equipment list dashboard sidebar ── */
-.equip-dash{width:240px;flex-shrink:0;background:var(--panel);border:1px solid var(--bd);
-  border-radius:12px;box-shadow:0 1px 4px var(--shadow);padding:16px;
-  display:flex;flex-direction:column;gap:14px;}
-.equip-dash-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
-  color:var(--muted2);}
-.equip-kpi{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.equip-kpi-card{background:var(--panel2);border:1px solid var(--bd);border-radius:10px;
-  padding:10px;text-align:center;}
-.equip-kpi-card .kv{font-size:20px;font-weight:800;color:var(--navy);line-height:1;}
-.equip-kpi-card .kl{font-size:10px;color:var(--muted2);margin-top:3px;font-weight:600;}
-.equip-model-list{display:flex;flex-direction:column;gap:5px;}
-.equip-model-item{display:flex;justify-content:space-between;align-items:center;
-  font-size:12px;padding:5px 8px;background:var(--panel2);border-radius:6px;}
-.equip-model-item .mn{font-weight:700;color:var(--navy);}
-.equip-model-item .mc{font-size:11px;color:var(--muted2);}
+.list-end{text-align:center;color:var(--sub);font-size:12px;padding:20px;margin-bottom:40px;}
+.empty{text-align:center;padding:60px 20px;color:var(--sub);}
+.empty .icon{font-size:40px;margin-bottom:12px;}
 </style>
 </head>
 <body>
 
-<!-- xlsx 오류 -->
-<div id="xErr">
-  <div class="xerr">
-    <div style="font-size:44px">⚠️</div>
-    <h2>xlsx 라이브러리를 불러올 수 없습니다</h2>
-    <p>CDN이 차단된 환경입니다. 아래 절차를 따라 주세요.</p>
-    <ol>
-      <li>아래 링크에서 <b>xlsx.full.min.js</b> 다운로드</li>
-      <li><b>SPL_Viewer.html 과 같은 폴더</b>에 저장</li>
-      <li>브라우저 새로고침 (F5)</li>
-    </ol>
-    <a class="xerr-dl" href="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"
-       download="xlsx.full.min.js">📥 xlsx.full.min.js 다운로드</a>
-  </div>
+<!-- 로딩 -->
+<div id="loadingScreen">
+  <h2>SPL 조회</h2>
+  <p>데이터 로딩 중...</p>
+  <div class="spinner"></div>
 </div>
 
-<!-- Header -->
-<div class="hdr">
-  <div class="hdr-brand">
-    <span style="font-size:20px">⚙️</span>
-    <span class="hdr-title">SPL 자재 관리 시스템</span>
-  </div>
-  <div class="hdr-right">
-    <span class="hdr-meta" id="loadedMeta"></span>
-    <button class="btn-theme" onclick="toggleTheme()">🌓 테마</button>
-    <button class="btn-file" onclick="triggerFile()">📂 Excel 파일 열기</button>
-    <input type="file" id="fileInput" accept=".xlsx,.xlsm" style="display:none" onchange="loadFile(this)">
-  </div>
-</div>
+<div id="app" style="display:none">
+<div id="screens" class="s0">
 
-<!-- Nav -->
-<div class="nav" id="mainNav">
-  <button class="ntab on" id="tab-home" onclick="gotoTab('home',this)">🏠 홈</button>
-  <button class="ntab" id="tab-search" onclick="gotoTab('search',this)">🔍 파트 검색</button>
-  <button class="ntab" id="tab-shortage" onclick="gotoTab('shortage',this)">
-    ⚠️ 청구 필요 자재 <span class="nbadge" id="shortBadge">0</span>
-  </button>
-</div>
-
-<!-- ─── MAIN ─── -->
-<div class="main">
-
-  <!-- Welcome -->
-  <div class="view on" id="view-welcome">
-    <div class="welcome">
-      <div style="font-size:56px;margin-bottom:18px">📦</div>
-      <h2>SPL 자재 관리 시스템</h2>
-      <p>Excel 파일(.xlsx / .xlsm)을 불러오면<br>공장 배치도 → 부서 장비도 → SPL 조회가 가능합니다.</p>
-      <button class="btn-primary" onclick="triggerFile()">📂 Excel 파일 불러오기</button>
-    </div>
-  </div>
-
-  <!-- Loading -->
-  <div class="view" id="view-loading">
-    <div class="loading-c">
-      <div class="spinner"></div>
-      <div class="load-txt" id="loadTxt">데이터 로딩 중...</div>
-      <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
-      <div class="load-det" id="loadDet"></div>
-    </div>
-  </div>
-
-  <!-- ── Home ── -->
-  <div class="view" id="view-home">
-    <!-- breadcrumb (dept selected) -->
-    <div class="bc" id="homeBc">
-      <span class="bc-link" onclick="showHomeMap()">🏠 홈</span>
-      <span class="bc-sep">›</span>
-      <span class="bc-cur" id="bcDept"></span>
-    </div>
-
-    <!-- factory map panel -->
-    <div id="homeMap">
-      <div class="home-toolbar">
-        <span class="home-title">🏭 TaeguTec 공장 전체 배치도</span>
-        <div class="home-actions">
-          <span class="last-update" id="lastUpdateTxt">Last Update: -</span>
-          <button class="btn-shortage" onclick="gotoTab('shortage',document.getElementById('tab-shortage'))">
-            📋 청구 필요 자재
-          </button>
-        </div>
+  <!-- ════ 화면1: 공장 배치도 ════ -->
+  <div class="screen" id="s-home">
+    <div class="hdr">
+      <div style="flex:1">
+        <div class="hdr-title">🏭 TaeguTec SPL 조회</div>
       </div>
-
-      <div class="map-card">
-        <svg viewBox="0 0 910 370" xmlns="http://www.w3.org/2000/svg">
-          <rect width="910" height="370" rx="10" class="map-bg"/>
-
-          <!-- Row 1 -->
-          <rect class="zone-dept" x="10" y="10" width="270" height="100" rx="10" onclick="openDept('IMC ENDMILL','IMC ENDMILL')"/>
-          <text class="zlabel" x="145" y="60">IMC ENDMILL</text>
-
-          <rect class="zone-dept" x="296" y="10" width="100" height="100" rx="10" onclick="openDept('원료','원료')"/>
-          <text class="zlabel" x="346" y="60">원료</text>
-
-          <rect class="zone-dept" x="406" y="10" width="88" height="100" rx="10" onclick="openDept('MC','M/C')"/>
-          <text class="zlabel" x="450" y="60">M/C</text>
-
-          <rect class="zone-dept" x="504" y="10" width="84" height="100" rx="10" onclick="openDept('금형1','금형1')"/>
-          <text class="zlabel" x="546" y="60">금형1</text>
-
-          <rect class="zone-dept" x="598" y="10" width="88" height="100" rx="10" onclick="openDept('합금1','합금1')"/>
-          <text class="zlabel" x="642" y="60">합금1</text>
-
-          <rect class="zone-dept" x="702" y="10" width="100" height="100" rx="10" onclick="openDept('드릴','드릴')"/>
-          <text class="zlabel" x="752" y="60">드릴</text>
-
-          <rect class="zone-dept" x="812" y="10" width="88" height="100" rx="10" onclick="openDept('세라믹','세라믹')"/>
-          <text class="zlabel" x="856" y="60">세라믹</text>
-
-          <!-- Row 2 -->
-          <rect class="zone-dept" x="10" y="126" width="84" height="88" rx="10" onclick="openDept('코팅2','코팅2')"/>
-          <text class="zlabel" x="52" y="170">코팅2</text>
-
-          <rect class="zone-dept" x="10" y="224" width="84" height="42" rx="8" onclick="openDept('QA','QA')"/>
-          <text class="zlabel zlabel-sm" x="52" y="245">QA</text>
-
-          <rect class="zone-dept" x="104" y="126" width="84" height="140" rx="10" onclick="openDept('연삭2','연삭2')"/>
-          <text class="zlabel" x="146" y="196">연삭2</text>
-
-          <rect class="zone-dept" x="198" y="126" width="82" height="57" rx="10" onclick="openDept('금형2','금형2')"/>
-          <text class="zlabel" x="239" y="155">금형2</text>
-
-          <rect class="zone-dept" x="198" y="193" width="82" height="57" rx="10" onclick="openDept('합금2','합금2')"/>
-          <text class="zlabel" x="239" y="222">합금2</text>
-
+      <span class="update-badge" id="updateBadge">—</span>
+    </div>
+    <div class="scroll-body">
+      <div id="map-wrap">
+        <svg viewBox="0 0 370 910" xmlns="http://www.w3.org/2000/svg">
+          <rect width="370" height="910" rx="10" class="map-bg"/>
+          <!-- 좌측 세로 열: 가공 (원래 하단 좌측) -->
+          <rect class="zone-dept" x="10" y="10" width="78" height="270" rx="10" onclick="openDept('가공')"/>
+          <text class="zlabel" x="49" y="145">가공</text>
+          <!-- 우측 세로 열 (원래 1행): IMC ENDMILL → 세라믹 순 (상→하) -->
+          <rect class="zone-dept" x="260" y="10" width="100" height="270" rx="10" onclick="openDept('IMC ENDMILL')"/>
+          <text class="zlabel zlabel-sm" x="310" y="145">IMC ENDMILL</text>
+          <!-- 중간 상단: QA, 코팅2 -->
+          <rect class="zone-dept" x="104" y="10" width="42" height="84" rx="8" onclick="openDept('QA')"/>
+          <text class="zlabel zlabel-sm" x="125" y="52">QA</text>
+          <rect class="zone-dept" x="156" y="10" width="88" height="84" rx="10" onclick="openDept('코팅2')"/>
+          <text class="zlabel" x="200" y="52">코팅2</text>
+          <!-- 연삭2 -->
+          <rect class="zone-dept" x="104" y="104" width="140" height="84" rx="10" onclick="openDept('연삭2')"/>
+          <text class="zlabel" x="174" y="146">연삭2</text>
+          <!-- 합금2, 금형2 -->
+          <rect class="zone-dept" x="120" y="198" width="57" height="82" rx="10" onclick="openDept('합금2')"/>
+          <text class="zlabel" x="148" y="239">합금2</text>
+          <rect class="zone-dept" x="187" y="198" width="57" height="82" rx="10" onclick="openDept('금형2')"/>
+          <text class="zlabel" x="215" y="239">금형2</text>
           <!-- 잔디 -->
-          <rect class="zone-grass" x="296" y="126" width="310" height="140" rx="10"/>
-
-          <rect class="zone-dept" x="616" y="126" width="76" height="140" rx="10" onclick="openDept('Roll','Roll')"/>
-          <text class="zlabel" x="654" y="196">Roll</text>
-
-          <rect class="zone-dept" x="702" y="126" width="95" height="66" rx="10" onclick="openDept('연삭1','연삭1')"/>
-          <text class="zlabel" x="749" y="159">연삭1</text>
-
-          <rect class="zone-dept" x="807" y="126" width="93" height="66" rx="10" onclick="openDept('코팅1','코팅1')"/>
-          <text class="zlabel" x="853" y="159">코팅1</text>
-
-          <!-- Row 3 -->
-          <rect class="zone-dept" x="10" y="282" width="270" height="78" rx="10" onclick="openDept('가공','가공')"/>
-          <text class="zlabel" x="145" y="321">가공</text>
+          <rect class="zone-grass" x="104" y="296" width="140" height="310" rx="10"/>
+          <!-- 우측 열: 원료, M/C, 금형1, 합금1, 드릴, 세라믹 -->
+          <rect class="zone-dept" x="260" y="296" width="100" height="100" rx="10" onclick="openDept('원료')"/>
+          <text class="zlabel" x="310" y="346">원료</text>
+          <rect class="zone-dept" x="260" y="406" width="100" height="88" rx="10" onclick="openDept('MC')"/>
+          <text class="zlabel" x="310" y="450">M/C</text>
+          <rect class="zone-dept" x="260" y="504" width="100" height="84" rx="10" onclick="openDept('금형1')"/>
+          <text class="zlabel" x="310" y="546">금형1</text>
+          <rect class="zone-dept" x="260" y="598" width="100" height="88" rx="10" onclick="openDept('합금1')"/>
+          <text class="zlabel" x="310" y="642">합금1</text>
+          <!-- Roll -->
+          <rect class="zone-dept" x="104" y="616" width="140" height="76" rx="10" onclick="openDept('Roll')"/>
+          <text class="zlabel" x="174" y="654">Roll</text>
+          <!-- 연삭1, 코팅1 -->
+          <rect class="zone-dept" x="178" y="702" width="66" height="95" rx="10" onclick="openDept('연삭1')"/>
+          <text class="zlabel" x="211" y="749">연삭1</text>
+          <rect class="zone-dept" x="260" y="702" width="100" height="100" rx="10" onclick="openDept('드릴')"/>
+          <text class="zlabel" x="310" y="752">드릴</text>
+          <rect class="zone-dept" x="178" y="807" width="66" height="93" rx="10" onclick="openDept('코팅1')"/>
+          <text class="zlabel" x="211" y="853">코팅1</text>
+          <rect class="zone-dept" x="260" y="812" width="100" height="88" rx="10" onclick="openDept('세라믹')"/>
+          <text class="zlabel" x="310" y="856">세라믹</text>
         </svg>
       </div>
+    </div>
+  </div>
 
-      <!-- Stats below map -->
-      <div style="margin-top:18px">
-        <div class="stats-row" id="homeStats"></div>
+  <!-- ════ 화면2: 부서 장비 그리드 ════ -->
+  <div class="screen" id="s-dept">
+    <div class="hdr">
+      <button class="hdr-back" onclick="goBack(1)">‹</button>
+      <div style="flex:1">
+        <div class="hdr-title" id="deptTitle">부서</div>
+      </div>
+      <span class="hdr-sub" id="deptSubtitle"></span>
+    </div>
+    <div class="dept-info">
+      <span id="deptTotalBadge" class="dept-badge"></span>
+      <span id="deptShortBadge" class="dept-badge warn" style="display:none"></span>
+    </div>
+    <div class="scroll-body" id="deptBody"></div>
+  </div>
+
+  <!-- ════ 화면3: SPL 리스트 ════ -->
+  <div class="screen" id="s-spl">
+    <div class="hdr">
+      <button class="hdr-back" onclick="goBack(2)">‹</button>
+      <div style="flex:1">
+        <div class="hdr-title" id="splTitle">장비</div>
+      </div>
+      <span class="hdr-sub" id="splSubtitle"></span>
+    </div>
+    <div class="spl-search-bar">
+      <div class="spl-search-inner">
+        <span>🔍</span>
+        <input class="spl-input" id="splInput" type="search"
+          placeholder="품번 · 부품명 검색..." autocomplete="off" oninput="filterSPL()">
+        <button class="spl-clear" onclick="clearSPL()">×</button>
       </div>
     </div>
-
-    <!-- dept 2D layout panel (hidden until dept selected) -->
-    <div id="homeDept" class="home-dept" style="display:none"></div>
+    <div class="spl-meta" id="splMeta"></div>
+    <div class="scroll-body" id="splList"></div>
   </div>
 
-  <!-- Search -->
-  <div class="view" id="view-search">
-    <div class="search-wrap">
-      <span class="s-icon">🔍</span>
-      <input class="s-input" id="searchInput" type="text"
-        placeholder="Item No, 파트명, Description 입력..."
-        oninput="schedSearch()">
-      <button class="s-clear" onclick="clearSearch()">✕</button>
-    </div>
-    <div class="s-meta" id="searchMeta"></div>
-    <div class="table-card" id="searchOut">
-      <div class="empty-state"><div class="ei">🔍</div><p>검색어를 입력하세요</p></div>
-    </div>
-  </div>
-
-  <!-- Shortage -->
-  <div class="view" id="view-shortage">
-    <div class="sec-hdr">
-      <div class="sec-title">⚠️ 청구 필요 자재</div>
-      <div class="sec-sub" id="shortageTotal"></div>
-    </div>
-    <div class="table-card" id="shortageOut"></div>
-  </div>
-
-</div><!-- /main -->
-
-<!-- Equipment Dashboard Popup -->
-<div id="equipDashPop" onclick="closeEquipDash()" style="display:none;position:fixed;inset:0;
-  z-index:600;background:rgba(11,23,56,.5);backdrop-filter:blur(4px);
-  align-items:center;justify-content:center;"></div>
-
-<!-- SPL Modal -->
-<div class="spl-ov" id="splOv" onclick="closeSPLClick(event)">
-  <div class="spl-box" onclick="event.stopPropagation()">
-    <div class="spl-head">
-      <div class="spl-bc" id="splBc"></div>
-      <input class="spl-search" id="splSearch" type="text"
-        placeholder="🔍 파트 검색..." oninput="filterSPL()">
-      <button class="btn-dash" id="btnDash" onclick="toggleSplDash()">📊 현황</button>
-      <button class="btn-close" onclick="closeSPL()">✕</button>
-    </div>
-    <div class="spl-stats" id="splStats"></div>
-    <div class="spl-content">
-      <div class="spl-body" id="splBody"></div>
-      <div class="spl-dash" id="splDash" style="display:none"></div>
-    </div>
-  </div>
-</div>
+</div><!-- /screens -->
+</div><!-- /app -->
 
 <script>
-/* ════ State ════ */
-let wb=null, stockCache={}, allParts=[], shortParts=[], shortageBySheet={}, equipCache={};
-let currentDeptKey='', currentDeptName='';
-let searchTimer=null;
+const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
+const STOCK_URL = 'https://docs.google.com/spreadsheets/d/1tAelq8-WQClT2f9U4fsUwxlTLn0sW6e39CCFkZu3YPY/export?format=csv&gid=1876732220';
 
-/* ════ Dept list ════ */
-const DEPT_LIST=[
-  {n:'IMC ENDMILL',k:'IMC ENDMILL'},{n:'원료',k:'원료'},{n:'M/C',k:'MC'},
-  {n:'금형1',k:'금형1'},{n:'금형2',k:'금형2'},{n:'합금1',k:'합금1'},{n:'합금2',k:'합금2'},
-  {n:'드릴',k:'드릴'},{n:'세라믹',k:'세라믹'},{n:'코팅1',k:'코팅1'},{n:'코팅2',k:'코팅2'},
-  {n:'연삭1',k:'연삭1'},{n:'연삭2',k:'연삭2'},{n:'QA',k:'QA'},{n:'Roll',k:'Roll'},{n:'가공',k:'가공'},
-];
+let allParts = [];
+let depts = {};
+let layouts = {};
+let stockMap = {};
+let currentDept = '';
+let currentEq = '';
+let currentParts = [];
 
-const META=new Set([
-  'HOME','RawData','현황개요','CT세부사항','IP세부사항','종합현황','폐기장비','Sample',
-  'Sheet1','Ref.Data','Tech-Office','검색결과','대시보드',
-  '합금1','합금2','금형1','금형2','연삭1','연삭2','코팅1','코팅2','가공','MC','드릴','세라믹',
-  'QA','성능','Roll','원료','Robot','전기','공통','IMC ENDMILL',
-  'Roll Multi','Roll Puma','Roll HIP','Roll Batch','Roll HN',
-  'Roll COV','Roll COD','Roll CIP','Roll Auto Packing','Roll 350t','Roll 1200t',
-]);
-
-/* ════ Theme ════ */
-function toggleTheme(){
-  const h=document.documentElement;
-  const next=h.getAttribute('data-theme')==='dark'?'light':'dark';
-  h.setAttribute('data-theme',next);
-  try{localStorage.setItem('spl-theme',next);}catch(_){}
-}
-(function(){
-  try{const t=localStorage.getItem('spl-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(_){}
-})();
-
-/* ════ File loading ════ */
-function triggerFile(){const fi=document.getElementById('fileInput');fi.value='';fi.click();}
-
-async function loadFile(input){
-  const file=input.files[0]; if(!file) return;
-  showRawView('loading');
-  document.getElementById('mainNav').classList.remove('on');
-  const reader=new FileReader();
-  reader.onload=async(e)=>{
-    try{
-      setP(5,'Excel 읽는 중...','');
-      await sleep(30);
-      wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellStyles:true});
-      setP(12,'RawData 로딩...','');
-      await sleep(10);
-      buildStockCache();
-      setP(18,'SPL 파싱 중...','');
-      await sleep(10);
-      await parseAllParts();
-      setP(88,'장비 목록 추출...','');
-      await sleep(10);
-      extractAllEquipment();
-      shortParts=allParts.filter(p=>p.safetyQty>0&&p.stock<p.safetyQty)
-                         .sort((a,b)=>(b.safetyQty-b.stock)-(a.safetyQty-a.stock));
-      buildShortageBySheet();
-      updateEquipShortage();
-      setP(96,'화면 구성 중...','');
-      await sleep(30);
-      loadERP();
-      buildHomeStats();
-      buildShortage();
-      document.getElementById('shortBadge').textContent=shortParts.length;
-      document.getElementById('loadedMeta').textContent=allParts.length.toLocaleString()+'개 파트';
-      setP(100,'완료','');
-      await sleep(150);
-      document.getElementById('mainNav').classList.add('on');
-      gotoTab('home',document.getElementById('tab-home'),false);
-      history.replaceState({v:'home'},'','');
-    }catch(err){
-      alert('오류:\n'+err.message);
-      showRawView('welcome');
-    }
+/* ── 데이터 로드 ──
+   fetchWithTimeout은 헤더만 커버 → 본문(.json/.text) 중 끊기면 무한대기.
+   마스터 AbortController로 헤더+본문 전체를 타임아웃 처리. */
+async function loadData() {
+  const showErr = (msg) => {
+    document.getElementById('loadingScreen').innerHTML =
+      '<h2 style="font-size:15px;padding:0 20px;text-align:center">데이터 로드 실패</h2>' +
+      '<p style="color:#fca5a5;padding:0 20px;text-align:center">' + msg + '</p>' +
+      '<p style="color:#fca5a5;padding:0 20px;text-align:center;font-size:11px">새로고침 후 다시 시도해주세요</p>';
   };
-  reader.readAsArrayBuffer(file);
-}
+  const setMsg = (t) => {
+    const el = document.querySelector('#loadingScreen p');
+    if (el) el.textContent = t;
+  };
 
-function buildStockCache(){
-  stockCache={};
-  const s=wb.Sheets['RawData'];if(!s)return;
-  XLSX.utils.sheet_to_json(s,{header:1}).forEach((r,i)=>{
-    if(i===0||!r[0])return;
-    stockCache[String(r[0]).trim()]=r[1]??0;
-  });
-}
-
-async function parseAllParts(){
-  allParts=[];
-  const sheets=wb.SheetNames.filter(n=>!META.has(n));
-  for(let i=0;i<sheets.length;i++){
-    if(i%8===0){setP(18+Math.round(i/sheets.length*68),`파싱 (${i+1}/${sheets.length})`,sheets[i]);await sleep(0);}
-    parseSheet(sheets[i]);
-  }
-}
-
-function parseSheet(name){
-  const ws=wb.Sheets[name];if(!ws||!ws['!ref'])return;
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-  if(rows.length<3)return;
-  let hdr=-1,iC=-1,skC=-1,sqC=-1,tyC=-1,ptC=-1,d1C=-1,mdC=-1;
-  for(let r=0;r<Math.min(8,rows.length);r++){
-    const row=rows[r];let sc=0;
-    for(let c=0;c<row.length;c++){
-      const v=String(row[c]||'').trim().toLowerCase().replace(/\s/g,'');
-      if(v==='itemno'||v==='itemno.'){iC=c;sc++;}
-      if(v==='재고'){skC=c;sc++;}
-      if(v==='safetyqty'){sqC=c;sc++;}
-      if(v==='type')tyC=c;
-      if(v==='part')ptC=c;
-      if(v==='model'||v.startsWith('model'))mdC=c;
-      if(v.startsWith('description1'))d1C=c;
-    }
-    if(sc>=2&&iC>=0){hdr=r;break;}
-  }
-  if(hdr<0||iC<0)return;
-  for(let r=hdr+1;r<rows.length;r++){
-    const row=rows[r];
-    const itemNo=String(row[iC]||'').trim();
-    if(!itemNo||itemNo==='nan'||itemNo==='None')continue;
-    const rawSk=skC>=0?row[skC]:undefined;
-    const stock=stockCache[itemNo]!==undefined?Number(stockCache[itemNo])||0
-                :(rawSk!==undefined?Number(rawSk)||0:0);
-    allParts.push({sheet:name,itemNo,
-      type:tyC>=0?String(row[tyC]||''):'',
-      part:ptC>=0?String(row[ptC]||''):'',
-      model:mdC>=0?String(row[mdC]||''):'',
-      desc1:d1C>=0?String(row[d1C]||''):'',
-      stock,safetyQty:sqC>=0?(Number(row[sqC])||0):0});
-  }
-}
-
-function buildShortageBySheet(){
-  shortageBySheet={};
-  shortParts.forEach(p=>{shortageBySheet[p.sheet]=(shortageBySheet[p.sheet]||0)+1;});
-}
-
-/* ════ Equipment extraction ════ */
-const ROOM_KW=['Press','Sinter','Sand','합금','금형','연삭','코팅','가공','구역','Robot','QA','IMC','검사실','Grinding','세척','창고','보관'];
-function isRoomHdr(val){
-  return ROOM_KW.some(k=>
-    val===k ||
-    val.toLowerCase().startsWith(k.toLowerCase()) ||
-    val.toLowerCase().includes(' '+k.toLowerCase())
-  );
-}
-
-/* ── Equipment pastel color by base name ── */
-const EPAL=[
-  {bg:'#dbeafe',c:'#1e3a8a'},{bg:'#d1fae5',c:'#064e3b'},
-  {bg:'#fce7f3',c:'#831843'},{bg:'#ede9fe',c:'#4c1d95'},
-  {bg:'#fef9c3',c:'#713f12'},{bg:'#ffedd5',c:'#7c2d12'},
-  {bg:'#ccfbf1',c:'#134e4a'},{bg:'#fdf4ff',c:'#581c87'},
-  {bg:'#ecfdf5',c:'#14532d'},{bg:'#fff1f2',c:'#881337'},
-  {bg:'#f0fdf4',c:'#166534'},{bg:'#e0f2fe',c:'#0c4a6e'},
-];
-function strHash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))&0x7fff;return h;}
-function equipBase(name){return name.replace(/[\s\-#]*#?\d+$/, '').trim()||name;}
-function equipColor(name){return EPAL[strHash(equipBase(name))%EPAL.length];}
-
-function findSheet(key){
-  if(!wb||!key)return null;
-  const names=wb.SheetNames;
-  let r=names.find(n=>n===key);if(r)return r;
-  const cl=s=>String(s).trim().toLowerCase().replace(/[\s#]/g,'');
-  r=names.find(n=>cl(n)===cl(key));if(r)return r;
-  r=names.find(n=>cl(n).includes(cl(key))||cl(key).includes(cl(n)));if(r)return r;
-  return null;
-}
-
-function extractEquipment(deptKey){
-  const ws=wb.Sheets[deptKey];if(!ws||!ws['!ref'])return[];
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  const seen=new Set();const result=[];
-  for(let r=0;r<=range.e.r;r++){
-    for(let c=26;c<=Math.min(range.e.c,90);c++){
-      const cell=ws[XLSX.utils.encode_cell({r,c})];
-      if(!cell||!cell.v)continue;
-      const val=String(cell.v).trim();
-      if(!val||val.length<2||isRoomHdr(val)||/^[\d\s\-\_\.\/]+$/.test(val))continue;
-      let sheetName=val;
-      if(cell.l&&cell.l.Target){
-        const raw=String(cell.l.Target);
-        if(raw.startsWith('#'))sheetName=raw.substring(1).split('!')[0].replace(/^'|'$/g,'').trim();
-      }
-      const resolved=findSheet(sheetName);
-      if(!resolved)continue;
-      const key=resolved.toLowerCase();
-      if(!seen.has(key)){seen.add(key);result.push({name:val,sheetName:resolved});}
-    }
-  }
-  return result;
-}
-
-function extractAllEquipment(){
-  equipCache={};
-  DEPT_LIST.forEach(d=>{equipCache[d.k]=extractEquipment(d.k);});
-}
-
-function updateEquipShortage(){
-  DEPT_LIST.forEach(d=>{
-    (equipCache[d.k]||[]).forEach(eq=>{eq.shortageCount=shortageBySheet[eq.sheetName]||0;});
-  });
-}
-
-/* ════ ERP date ════ */
-function loadERP(){
-  try{
-    const s=wb.Sheets['HOME'];if(!s)return;
-    const rows=XLSX.utils.sheet_to_json(s,{header:1,defval:''});
-    for(const row of rows){
-      for(let c=0;c<row.length-1;c++){
-        if(String(row[c]).includes('Last Update')&&row[c+1]){
-          let v=row[c+1];
-          if(typeof v==='number'){
-            const d=new Date(Math.round((v-25569)*86400*1000));
-            v=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
-          } else { v=String(v).slice(0,10); }
-          document.getElementById('lastUpdateTxt').textContent='Last Update: '+v;
-          return;
-        }
-      }
-    }
-  }catch(_){}
-}
-
-/* ════ Home stats ════ */
-function buildHomeStats(){
-  const total=allParts.length;
-  const equip=new Set(allParts.map(p=>p.sheet)).size;
-  const zero=allParts.filter(p=>p.stock===0).length;
-  const short=shortParts.length;
-  document.getElementById('homeStats').innerHTML=`
-    <div class="scard"><div class="lbl">전체 파트</div><div class="val">${total.toLocaleString()}</div></div>
-    <div class="scard"><div class="lbl">장비 수</div><div class="val">${equip}</div></div>
-    <div class="scard"><div class="lbl">재고 0</div><div class="val warn">${zero.toLocaleString()}</div>
-      <div class="sub">전체의 ${Math.round(zero/total*100)}%</div></div>
-    <div class="scard"><div class="lbl">청구 필요</div><div class="val danger">${short}</div>
-      <div class="sub">즉시 확인 필요</div></div>`;
-}
-
-/* ════ Layout drag-to-scroll ════ */
-function initLayoutDrag(){
-  const wrap=document.getElementById('layoutWrap');
-  if(!wrap||wrap._dragInit)return;
-  wrap._dragInit=true;
-  let isDown=false,startX,scrollL;
-  wrap.addEventListener('mousedown',e=>{
-    if(e.button!==0)return;
-    isDown=true;startX=e.pageX;scrollL=wrap.scrollLeft;
-    wrap.classList.add('dragging');
-  });
-  document.addEventListener('mouseup',()=>{isDown=false;wrap.classList.remove('dragging');});
-  wrap.addEventListener('mousemove',e=>{
-    if(!isDown)return;
-    e.preventDefault();
-    wrap.scrollLeft=scrollL-(e.pageX-startX);
-  });
-}
-/* ════ Dept sub-tabs ════ */
-function switchDeptTab(tab){
-  ['layout','list'].forEach(t=>{
-    document.getElementById('dtab-'+t)?.classList.toggle('on',t===tab);
-    document.getElementById('deptTab'+t.charAt(0).toUpperCase()+t.slice(1))
-      &&(document.getElementById('deptTab'+t.charAt(0).toUpperCase()+t.slice(1)).style.display=t===tab?'':'none');
-  });
-  if(tab==='list'){
-    const el=document.getElementById('deptTabList');
-    if(el&&!el.dataset.loaded){renderEquipList(currentDeptKey,currentDeptName,el);el.dataset.loaded='1';}
-  }
-}
-
-/* ════ Equipment List Parser ════ */
-let _equipStats=null; /* saved for popup */
-
-function renderEquipList(deptKey,deptName,container){
-  const ws=wb.Sheets[deptKey];
-  if(!ws||!ws['!ref']){container.innerHTML='<div class="empty-state"><p>데이터 없음</p></div>';return;}
-
-  /* hidden cols */
-  const hiddenCols=new Set();
-  if(ws['!cols'])ws['!cols'].forEach((c,i)=>{if(c&&c.hidden)hiddenCols.add(i);});
-
-  const MAX_COL=26;
-  /* read raw 2D array */
-  const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-  /* deep copy so we can mutate */
-  const rows=raw.map(r=>r.slice());
-
-  /* ── Propagate merged cells (forward-fill) ── */
-  if(ws['!merges']){
-    ws['!merges'].forEach(m=>{
-      if(m.s.c>=MAX_COL)return; /* right side layout cols — skip */
-      const srcCell=ws[XLSX.utils.encode_cell({r:m.s.r,c:m.s.c})];
-      const val=srcCell?(srcCell.v??''):'';
-      for(let r=m.s.r;r<=m.e.r;r++){
-        for(let c=m.s.c;c<=Math.min(m.e.c,MAX_COL-1);c++){
-          if(r===m.s.r&&c===m.s.c)continue;
-          if(!rows[r])rows[r]=[];
-          rows[r][c]=val;
-        }
-      }
-    });
-  }
-
-  /* find header row */
-  let hdrRow=-1,hdrScore=0;
-  for(let r=0;r<Math.min(6,rows.length);r++){
-    const score=rows[r].slice(0,MAX_COL).filter((v,i)=>!hiddenCols.has(i)&&String(v).trim()).length;
-    if(score>hdrScore){hdrScore=score;hdrRow=r;}
-  }
-  if(hdrRow<0||hdrScore<2){container.innerHTML='<div class="empty-state"><p>장비 리스트 데이터 없음</p></div>';return;}
-
-  const headers=rows[hdrRow].slice(0,MAX_COL);
-  const visCol=headers.map((h,i)=>({h:String(h).trim(),i}))
-    .filter(({h,i})=>h&&!hiddenCols.has(i));
-
-  const dataRows=rows.slice(hdrRow+1).filter(row=>
-    row.slice(0,MAX_COL).some((v,i)=>!hiddenCols.has(i)&&String(v).trim())
-  );
-  if(!dataRows.length){container.innerHTML='<div class="empty-state"><p>장비 데이터 없음</p></div>';return;}
-
-  /* ── Compute stats ── */
-  const col=k=>visCol.find(c=>c.h.toLowerCase().includes(k));
-  const nameCol=col('name'),modelCol=col('model'),yearCol=col('year'),
-        robotCol=col('robot'),autoCol=col('auto');
-
-  function countMap(colDef){
-    const m={};
-    dataRows.forEach(row=>{
-      const v=colDef?String(row[colDef.i]||'').trim():'';
-      if(v)m[v]=(m[v]||0)+1;
-    });
-    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-  }
-
-  const modelEntries=countMap(modelCol);
-  const nameEntries=countMap(nameCol);
-  const robotEntries=countMap(robotCol);
-  const autoEntries=countMap(autoCol);
-  const years=dataRows.map(r=>yearCol?Number(r[yearCol.i]):0).filter(y=>y>1900);
-  const minY=years.length?Math.min(...years):'-';
-  const maxY=years.length?Math.max(...years):'-';
-  const total=dataRows.length;
-
-  /* decade breakdown */
-  const decades={};
-  years.forEach(y=>{const d=Math.floor(y/10)*10;decades[d]=(decades[d]||0)+1;});
-  const decadeEntries=Object.entries(decades).sort((a,b)=>a[0]-b[0]);
-
-  _equipStats={total,modelEntries,nameEntries,robotEntries,autoEntries,
-    decadeEntries,minY,maxY,deptName};
-
-  /* ── Mini sidebar ── */
-  function barRow(label,count,max,color='var(--navy)'){
-    const pct=Math.round(count/max*100);
-    return`<div style="margin-bottom:6px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
-        <span style="font-weight:600;color:var(--txt2)">${esc(label)}</span>
-        <span style="color:var(--muted2)">${count}대</span>
-      </div>
-      <div style="height:5px;background:var(--bd2);border-radius:3px">
-        <div style="height:5px;width:${pct}%;background:${color};border-radius:3px"></div>
-      </div></div>`;
-  }
-  const maxM=modelEntries[0]?.[1]||1;
-
-  const sideHtml=`<div class="equip-dash">
-    <div class="equip-dash-title">📊 장비 현황</div>
-    <div class="equip-kpi">
-      <div class="equip-kpi-card"><div class="kv">${total}</div><div class="kl">총 장비</div></div>
-      <div class="equip-kpi-card"><div class="kv">${modelEntries.length}</div><div class="kl">모델 종류</div></div>
-      <div class="equip-kpi-card"><div class="kv" style="font-size:14px">${minY}</div><div class="kl">최초 도입</div></div>
-      <div class="equip-kpi-card"><div class="kv" style="font-size:14px">${maxY}</div><div class="kl">최근 도입</div></div>
-    </div>
-    <div class="equip-dash-title" style="margin-top:6px">모델별 수량</div>
-    ${modelEntries.slice(0,6).map(([m,c])=>barRow(m,c,maxM)).join('')}
-    ${robotEntries.length?`<div class="equip-dash-title" style="margin-top:6px">로봇 유형</div>
-    ${robotEntries.slice(0,3).map(([r,c])=>barRow(r,c,robotEntries[0][1],'#8b5cf6')).join('')}`:''}
-    <button onclick="openEquipDash()" style="margin-top:10px;width:100%;padding:8px;
-      background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:12px;
-      font-weight:700;cursor:pointer;font-family:inherit">📊 전체 현황 보기 →</button>
-  </div>`;
-
-  /* ── Merge map for HTML rendering ── */
-  /* mergeTopLeft[r][c] = {rowspan, colspan} for the top-left cell of a merge */
-  /* mergeCovered = Set of "r,c" strings for cells covered (but not top-left) */
-  const mergeTopLeft={};
-  const mergeCovered=new Set();
-  if(ws['!merges']){
-    ws['!merges'].forEach(m=>{
-      if(m.s.c>=MAX_COL)return;
-      if(!mergeTopLeft[m.s.r])mergeTopLeft[m.s.r]={};
-      mergeTopLeft[m.s.r][m.s.c]={rowspan:m.e.r-m.s.r+1,colspan:Math.min(m.e.c,MAX_COL-1)-m.s.c+1};
-      for(let r=m.s.r;r<=m.e.r;r++)
-        for(let c=m.s.c;c<=Math.min(m.e.c,MAX_COL-1);c++)
-          if(r!==m.s.r||c!==m.s.c)mergeCovered.add(`${r},${c}`);
-    });
-  }
-
-  /* map dataRows back to original row indices */
-  const indexedDataRows=rows.slice(hdrRow+1)
-    .map((row,i)=>({row,origR:hdrRow+1+i}))
-    .filter(({row})=>row.slice(0,MAX_COL).some((v,ci)=>!hiddenCols.has(ci)&&String(v).trim()));
-  const origRSet=new Set(indexedDataRows.map(d=>d.origR));
-
-  /* ── Build table HTML ── */
-  /* pastel palette: bg=light row bg, mc=name/model accent, tc=name/model text */
-  const GPAL=[
-    {bg:'#eef6ff',mc:'#bfdbfe',tc:'#1e3a8a'},
-    {bg:'#f0fdf4',mc:'#bbf7d0',tc:'#064e3b'},
-    {bg:'#f5f3ff',mc:'#ddd6fe',tc:'#4c1d95'},
-    {bg:'#fff7ed',mc:'#fed7aa',tc:'#7c2d12'},
-    {bg:'#ecfeff',mc:'#a5f3fc',tc:'#164e63'},
-    {bg:'#fefce8',mc:'#fde68a',tc:'#713f12'},
-    {bg:'#fff1f2',mc:'#fecdd3',tc:'#881337'},
-    {bg:'#eff6ff',mc:'#bfdbfe',tc:'#1e40af'},
-    {bg:'#f0fdf9',mc:'#99f6e4',tc:'#134e4a'},
-    {bg:'#faf5ff',mc:'#e9d5ff',tc:'#581c87'},
-  ];
-  const groupColorCache={};
-  let gColorIdx=0;
-  function getGroupColor(name){
-    if(!name)return GPAL[0];
-    if(!groupColorCache[name])groupColorCache[name]=GPAL[gColorIdx++%GPAL.length];
-    return groupColorCache[name];
-  }
-
-  /* ── Group key: use NAME column value (forward-filled) for every row ──
-     This is the simplest reliable method: after merge propagation, every row
-     in `rows` already has the correct NAME (merge top-left value is filled in).
-     Single-row items use their own NAME, multi-row groups share the merge value. */
-  const nameCI=nameCol?.i??visCol[0]?.i??0;
-  /* NAME=visCol[1], MODEL=visCol[2] by position — most reliable detection */
-  const accentCI=new Set([visCol[1]?.i,visCol[2]?.i].filter(v=>v!=null));
-
-  const rowGroupKey={}; /* origR → groupKey */
-  indexedDataRows.forEach(({row,origR})=>{
-    const v=String(row[nameCI]||'').trim();
-    rowGroupKey[origR]=v||`_row${origR}`;
-  });
-
-  const thead=`<thead><tr>${visCol.map(({h})=>`<th>${esc(h)}</th>`).join('')}</tr></thead>`;
-  const tbodyRows=indexedDataRows.map(({row,origR},ti)=>{
-    const groupKey=rowGroupKey[origR];
-    const gc=getGroupColor(groupKey);
-    const isGroupStart=ti>0&&rowGroupKey[indexedDataRows[ti-1].origR]!==groupKey;
-    const rowClass=isGroupStart?'group-start':'';
-
-    const tds=visCol.map(({i:ci})=>{
-      const cellKey=`${origR},${ci}`;
-      if(mergeCovered.has(cellKey))return''; /* skip covered cells */
-      const isAccent=accentCI.has(ci);
-      const ml=mergeTopLeft[origR]?.[ci];
-
-      /* calculate rowspan/colspan for any merge cell */
-      let rs='',cs='';
-      if(ml){
-        const mergeEndR=origR+ml.rowspan-1;
-        const vr=indexedDataRows.filter(d=>d.origR>=origR&&d.origR<=mergeEndR).length;
-        let vc2=0;
-        for(let c=ci;c<ci+ml.colspan;c++)if(!hiddenCols.has(c)&&c<MAX_COL)vc2++;
-        if(vr>1)rs=`rowspan="${vr}" `;
-        if(Math.max(1,vc2)>1)cs=`colspan="${Math.max(1,vc2)}" `;
-      }
-
-      const val=String(row[ci]??'');
-      /* NAME / MODEL columns: always accent styling */
-      if(isAccent){
-        return`<td ${rs}${cs}class="merge-cell" style="background:${gc.mc};color:${gc.tc}">${esc(val)}</td>`;
-      }
-      /* other columns: just inherit row background */
-      return`<td ${rs}${cs}>${esc(val)}</td>`;
-    }).join('');
-    return`<tr class="${rowClass}" style="background:${gc.bg};color:#1a2e5a">${tds}</tr>`;
-  }).join('');
-
-  container.innerHTML=`<div class="equip-list-wrap">
-    <div class="equip-list-table"><table>${thead}<tbody>${tbodyRows}</tbody></table></div>
-    ${sideHtml}
-  </div>`;
-}
-
-/* ════ Equipment Dashboard Popup ════ */
-function openEquipDash(){
-  const s=_equipStats;if(!s)return;
-  const maxM=s.modelEntries[0]?.[1]||1;
-  const maxR=s.robotEntries[0]?.[1]||1;
-  const maxD=Math.max(...s.decadeEntries.map(e=>e[1]),1);
-
-  function bigBar(label,count,max,color){
-    const pct=Math.round(count/max*100);
-    return`<div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:12px">
-        <span style="font-weight:700;color:var(--txt)">${esc(label)}</span>
-        <span style="font-weight:700;color:${color}">${count}대</span>
-      </div>
-      <div style="height:8px;background:var(--bd2);border-radius:4px">
-        <div style="height:8px;width:${pct}%;background:${color};border-radius:4px;transition:width .4s"></div>
-      </div></div>`;
-  }
-
-  const decadeChart=s.decadeEntries.map(([d,c])=>{
-    const pct=Math.round(c/maxD*100);
-    return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12px">
-      <div style="width:54px;text-align:right;color:var(--muted2);font-weight:600">${d}년대</div>
-      <div style="flex:1;height:20px;background:var(--bd2);border-radius:4px;position:relative">
-        <div style="height:20px;width:${pct}%;background:linear-gradient(90deg,var(--navy),var(--blue));border-radius:4px"></div>
-        <span style="position:absolute;left:8px;top:2px;font-size:11px;font-weight:700;color:#fff">${c}대</span>
-      </div>
-    </div>`;
-  }).join('');
-
-  const popup=document.getElementById('equipDashPop');
-  popup.innerHTML=`
-    <div style="background:var(--panel);border-radius:16px;width:92vw;max-width:900px;
-      max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.4);
-      border:1px solid var(--bd)" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;justify-content:space-between;
-        padding:18px 24px;border-bottom:1px solid var(--bd);background:var(--panel2);
-        border-radius:16px 16px 0 0">
-        <div style="font-size:16px;font-weight:800;color:var(--navy)">
-          📊 ${esc(s.deptName)} 장비 현황 대시보드
-        </div>
-        <button onclick="closeEquipDash()" style="background:none;border:1.5px solid var(--bd2);
-          color:var(--muted);border-radius:8px;padding:5px 12px;font-size:16px;cursor:pointer">✕</button>
-      </div>
-      <div style="padding:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px">
-        <!-- KPI row -->
-        <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-          ${[['총 장비',s.total,'kv-total'],['모델 종류',s.modelEntries.length,'kv-ok'],
-             ['최초 도입',s.minY,''],['최근 도입',s.maxY,'']].map(([l,v,c])=>`
-            <div class="dash-kpi-card" style="padding:16px">
-              <div class="kv ${c}" style="font-size:28px">${v}</div>
-              <div class="kl" style="font-size:11px;margin-top:5px">${l}</div>
-            </div>`).join('')}
-        </div>
-        <!-- Model -->
-        <div>
-          <div class="equip-dash-title" style="margin-bottom:12px">🔧 모델별 수량</div>
-          ${s.modelEntries.map(([m,c])=>bigBar(m,c,maxM,'#3b82f6')).join('')}
-        </div>
-        <!-- Robot -->
-        <div>
-          <div class="equip-dash-title" style="margin-bottom:12px">🤖 로봇 유형</div>
-          ${s.robotEntries.length
-            ?s.robotEntries.map(([r,c])=>bigBar(r,c,maxR,'#8b5cf6')).join('')
-            :'<div class="dash-none">데이터 없음</div>'}
-          ${s.nameEntries.length?`
-          <div class="equip-dash-title" style="margin-bottom:12px;margin-top:18px">🏭 제조사</div>
-          ${s.nameEntries.map(([n,c])=>bigBar(n,c,s.nameEntries[0][1],'#06b6d4')).join('')}`:''}
-        </div>
-        <!-- Decade -->
-        <div>
-          <div class="equip-dash-title" style="margin-bottom:12px">📅 연도별 도입 현황</div>
-          ${decadeChart}
-          ${s.autoEntries.length?`
-          <div class="equip-dash-title" style="margin-bottom:12px;margin-top:18px">⚙️ 자동화 유형</div>
-          ${s.autoEntries.map(([a,c])=>bigBar(a,c,s.autoEntries[0][1],'#f59e0b')).join('')}`:''}
-        </div>
-      </div>
-    </div>`;
-  popup.style.display='flex';
-}
-function closeEquipDash(){document.getElementById('equipDashPop').style.display='none';}
-
-
-/* ════ Show/hide home map vs dept layout ════ */
-function showHomeMap(push=true){
-  currentDeptKey='';currentDeptName='';
-  document.getElementById('homeBc').classList.remove('on');
-  document.getElementById('homeMap').style.display='';
-  document.getElementById('homeDept').style.display='none';
-  document.getElementById('homeDept').innerHTML='';
-  if(push)history.pushState({v:'home'},'','');
-}
-
-/* ════ Open dept ════ */
-function openDept(deptKey, deptName, push=true){
-  if(!wb){return;}
-  currentDeptKey=deptKey;currentDeptName=deptName;
-  document.getElementById('bcDept').textContent=deptName;
-  document.getElementById('homeBc').classList.add('on');
-  document.getElementById('homeMap').style.display='none';
-  document.getElementById('homeDept').style.display='block';
-
-  // Activate home tab
-  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('on'));
-  document.getElementById('tab-home').classList.add('on');
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.getElementById('view-home').classList.add('on');
-
-  const ws=wb.Sheets[deptKey];
-  const equips=equipCache[deptKey]||[];
-  const totalShort=equips.reduce((s,e)=>s+(e.shortageCount||0),0);
-
-  if(!ws||!ws['!ref']){
-    document.getElementById('homeDept').innerHTML=
-      `<div class="empty-state"><div class="ei">🔧</div><p>시트 데이터 없음</p></div>`;
-    if(push)history.pushState({v:'dept',k:deptKey,n:deptName},'','');
+  // ① SPL JSON (GitHub) — 20초 마스터 타임아웃
+  const splCtrl = new AbortController();
+  const splTimer = setTimeout(() => splCtrl.abort(), 20000);
+  try {
+    setMsg('SPL 데이터 로딩 중...');
+    const r1 = await fetch(DATA_URL + '?t=' + Date.now(), {signal: splCtrl.signal});
+    if (!r1.ok) throw new Error('SPL 데이터 로드 실패 (GitHub ' + r1.status + ')');
+    setMsg('데이터 파싱 중...');
+    const data = await r1.json();          // ← signal이 살아있어 여기서도 abort 가능
+    clearTimeout(splTimer);
+    allParts = data.parts || [];
+    depts    = data.depts  || {};
+    layouts  = data.layouts || {};
+    document.getElementById('updateBadge').textContent = data.updated || '';
+  } catch(e) {
+    clearTimeout(splTimer);
+    showErr(splCtrl.signal.aborted ? 'GitHub 로딩 시간 초과 (20초)' : e.message);
     return;
   }
 
-  document.getElementById('homeDept').innerHTML=`
-    <div class="sec-hdr" style="margin-bottom:12px">
-      <div class="sec-title">${esc(deptName)}</div>
-      <div class="sec-sub">${equips.length}개 장비 &nbsp;·&nbsp;
-        ${totalShort>0?`<span style="color:#c53030;font-weight:700">⚠️ ${totalShort}건 부족</span>`:'✅ 이상 없음'}</div>
-    </div>
-    <div class="dept-tabs">
-      <button class="dtab on" id="dtab-layout" onclick="switchDeptTab('layout')">🗺️ 장비 배치도</button>
-      <button class="dtab" id="dtab-list" onclick="switchDeptTab('list')">📋 장비 리스트</button>
-    </div>
-    <div id="deptTabLayout">
-      <div class="layout-wrap" id="layoutWrap">${renderDeptLayout(ws,deptName)}</div>
-    </div>
-    <div id="deptTabList" style="display:none"></div>`;
-
-  if(push)history.pushState({v:'dept',k:deptKey,n:deptName},'','');
-  requestAnimationFrame(()=>initLayoutDrag());
-}
-
-/* ════ 2D layout renderer ════ */
-function renderDeptLayout(ws,deptName){
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  const DEF=8.43,TUN=2.5;
-  const cw={};
-  if(ws['!cols'])ws['!cols'].forEach((c,i)=>{if(c)cw[i]=c.wch??DEF;});
-  const wch=c=>cw[c]??DEF;
-  const isTun=c=>wch(c)<TUN;
-  /* pastel palette for section headers */
-  const HPAL=[
-    {bg:'#dbeafe',c:'#1e40af'},{bg:'#d1fae5',c:'#065f46'},
-    {bg:'#fce7f3',c:'#9d174d'},{bg:'#ede9fe',c:'#5b21b6'},
-    {bg:'#ccfbf1',c:'#134e4a'},{bg:'#fed7e2',c:'#97266d'},
-    {bg:'#e0f2fe',c:'#075985'},{bg:'#dcfce7',c:'#166534'}
-  ];
-  const hdrColorMap={};
-
-  const usedCols=[];
-  for(let c=26;c<=Math.min(range.e.c,77);c++)if(!isTun(c))usedCols.push(c);
-  if(!usedCols.length)return'<div class="empty-state"><p>배치 데이터 없음 (AA열 이후 확인)</p></div>';
-
-  const grid={};
-  for(let r=0;r<=range.e.r;r++){
-    grid[r]={};
-    for(const c of usedCols)
-      grid[r][c]={cell:ws[XLSX.utils.encode_cell({r,c})],merged:false,rs:1,cs:1,text:'',rgb:null};
-  }
-  if(ws['!merges']){
-    ws['!merges'].forEach(m=>{
-      const sR=m.s.r,sC=m.s.c,eR=m.e.r,eC=m.e.c;
-      if(eC<26||sC>77)return;
-      const adjSC=Math.max(sC,26);
-      if(!usedCols.includes(adjSC))return;
-      const oc=ws[XLSX.utils.encode_cell({r:sR,c:sC})];
-      const txt=oc?String(oc.v??'').trim():'';
-      let rgb=null;
-      try{const s=oc?.s;rgb=s?.fgColor?.rgb??s?.bgColor?.rgb??null;
-        if(rgb&&(rgb==='FFFFFFFF'||rgb==='FFFFFF'||rgb==='00000000'))rgb=null;}catch(_){}
-      if(grid[sR]?.[adjSC]){
-        grid[sR][adjSC].text=txt;grid[sR][adjSC].rgb=rgb;
-        let cs=0;
-        for(let ci=adjSC;ci<=Math.min(eC,77);ci++)if(usedCols.includes(ci))cs++;
-        grid[sR][adjSC].cs=Math.max(1,cs);
-        grid[sR][adjSC].rs=Math.max(1,eR-sR+1);
-      }
-      for(let r=sR;r<=eR;r++)for(let c=adjSC;c<=Math.min(eC,77);c++){
-        if(r===sR&&c===adjSC)continue;
-        if(grid[r]?.[c])grid[r][c].merged=true;
-      }
-    });
-  }
-  /* collect rows that have at least one cell with content */
-  const contentRows=new Set();
-  for(let r=0;r<=range.e.r;r++){
-    if(usedCols.some(c=>grid[r]?.[c]?.cell?.v||grid[r]?.[c]?.text))contentRows.add(r);
-  }
-  if(!contentRows.size)return'<div class="empty-state"><p>배치 데이터 없음</p></div>';
-  /* include empty rows that sit BETWEEN the first and last content row (gap rows) */
-  const minR=Math.min(...contentRows),maxR=Math.max(...contentRows);
-  const usedRows=[];
-  for(let r=minR;r<=maxR;r++)usedRows.push(r);
-
-  const totalW=usedCols.reduce((s,c)=>s+wch(c),0);
-  const pct=c=>Math.max(2,Math.round(wch(c)/totalW*100));
-  const ROW_H=52;
-
-  let html=`<table class="dept-layout"><colgroup>
-    ${usedCols.map(c=>`<col style="width:${pct(c)}%">`).join('')}</colgroup>`;
-
-  for(const r of usedRows){
-    const isEmpty=!contentRows.has(r);
-    if(isEmpty){html+=`<tr style="height:14px">`;for(const c of usedCols)html+=`<td class="layout-empty"></td>`;html+=`</tr>`;continue;}
-    html+=`<tr style="height:${ROW_H}px">`;
-    for(const c of usedCols){
-      const gc=grid[r]?.[c];
-      if(!gc||gc.merged)continue;
-      const val=gc.text||(gc.cell?String(gc.cell.v??'').trim():'');
-      let rs=0;
-      for(let ri=r;ri<r+gc.rs;ri++)if(usedRows.includes(ri))rs++;
-      rs=Math.max(1,rs);
-      const at=(gc.cs>1?`colspan="${gc.cs}" `:'')+(rs>1?`rowspan="${rs}"`:'');
-      if(!val){html+=`<td ${at} class="layout-empty"></td>`;continue;}
-      const hasLink=!!gc.cell?.l?.Target;
-      /* NO hyperlink → section header or plain label (never clickable) */
-      if(!hasLink){
-        if(isRoomHdr(val)){
-          if(!hdrColorMap[val])hdrColorMap[val]=HPAL[Object.keys(hdrColorMap).length%HPAL.length];
-          const p=hdrColorMap[val];
-          html+=`<td ${at} class="layout-hdr" style="background:${p.bg};color:${p.c}">${esc(val)}</td>`;
-        } else {
-          html+=`<td ${at} class="layout-label">${esc(val)}</td>`;
+  // ② 구글시트 재고 — 8초 타임아웃, 실패해도 앱 계속 실행
+  setMsg('재고 데이터 로딩 중...');
+  const stCtrl = new AbortController();
+  const stTimer = setTimeout(() => stCtrl.abort(), 8000);
+  try {
+    const r2 = await fetch(STOCK_URL + '&t=' + Date.now(), {signal: stCtrl.signal});
+    clearTimeout(stTimer);
+    if (r2.ok) {
+      const csv = await r2.text();
+      csv.split('\n').slice(1).forEach(line => {
+        const cols = line.split(',');
+        if (cols.length >= 2) {
+          const itemNo = cols[0].trim().replace(/^"|"$/g, '');
+          const stock  = parseInt(cols[1].trim().replace(/^"|"$/g, ''), 10);
+          if (itemNo && !isNaN(stock)) stockMap[itemNo] = stock;
         }
-        continue;
-      }
-      /* HAS hyperlink → resolve to equipment sheet */
-      let linked=val;
-      const raw=String(gc.cell.l.Target);
-      if(raw.startsWith('#'))linked=raw.substring(1).split('!')[0].replace(/^'|'$/g,'').trim();
-      const resolved=findSheet(linked);
-      if(!resolved){
-        /* link present but sheet not found → non-clickable label */
-        html+=`<td ${at} class="layout-label">${esc(val)}</td>`;continue;
-      }
-      const shortC=shortageBySheet[resolved]||0;
-      const ec=equipColor(val);
-      const bgStyle=shortC?'':`background:${ec.bg};color:${ec.c};`;
-      html+=`<td ${at} class="layout-equip${shortC?' layout-short':''}" style="${bgStyle}"
-        onclick="openSPL('${esc(val)}','${esc(resolved)}','${esc(deptName)}')"
-        title="📋 ${esc(val)} SPL 보기">
-        <div class="cell-name">${esc(val)}</div>
-        ${shortC?`<div class="cell-badge">⚠️ ${shortC}건 부족</div>`:''}
-      </td>`;
+      });
+      allParts.forEach(p => {
+        if (stockMap.hasOwnProperty(p.itemNo)) p.stock = stockMap[p.itemNo];
+      });
     }
-    html+='</tr>';
+  } catch(e) {
+    clearTimeout(stTimer);
+    // 재고 실패는 무시 — SPL 구조 데이터로 계속
   }
-  return html+'</table>';
+
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
 }
 
-/* ════ SPL Modal ════ */
-function openSPL(equipName,sheetName,deptName){
-  const ws=wb.Sheets[sheetName];
-  if(!ws){alert(`시트 없음: ${sheetName}`);return;}
-  window._currentSplSheet=sheetName;
-  document.getElementById('splBc').innerHTML=
-    `<span class="bc-link" onclick="closeSPL()">🏠 홈</span>
-     <span class="bc-sep">›</span>
-     <span class="bc-link" onclick="closeSPL()">${esc(deptName)}</span>
-     <span class="bc-sep">›</span>
-     <span class="bc-cur">${esc(equipName)}</span>`;
-  document.getElementById('splSearch').value='';
-  /* ensure dashboard is visible before renderSPL so it gets populated */
-  if(!splDashVisible)toggleSplDash();
-  renderSPL(ws);
-  document.getElementById('splOv').classList.add('on');
-  document.getElementById('splSearch').focus();
-}
 
-function closeSPLClick(e){if(e.target===document.getElementById('splOv'))closeSPL();}
-function closeSPL(){document.getElementById('splOv').classList.remove('on');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSPL();});
+/* ── 부서 열기 ── */
+function openDept(deptKey) {
+  currentDept = deptKey;
+  const equips = depts[deptKey] || [];
 
-function renderSPL(ws){
-  const body=document.getElementById('splBody');
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-  if(!rows.length){body.innerHTML='<div class="empty-state"><p>데이터 없음</p></div>';return;}
-  let hdr=-1,iC=-1,skC=-1,sqC=-1;
-  for(let r=0;r<Math.min(8,rows.length);r++){
-    const row=rows[r];let sc=0;
-    for(let c=0;c<row.length;c++){
-      const v=String(row[c]||'').trim().toLowerCase().replace(/\s/g,'');
-      if(v==='itemno'||v==='itemno.'){iC=c;sc++;}
-      if(v==='재고'){skC=c;sc++;}
-      if(v==='safetyqty'){sqC=c;sc++;}
+  // 재고부족 집계
+  const shortByEq = {};
+  const cntByEq = {};
+  allParts.forEach(p => {
+    if (p.eq) {
+      cntByEq[p.eq] = (cntByEq[p.eq] || 0) + 1;
+      if (p.stock <= p.safety && p.safety > 0) {
+        shortByEq[p.eq] = (shortByEq[p.eq] || 0) + 1;
+      }
     }
-    if(sc>=2&&iC>=0){hdr=r;break;}
+  });
+
+  const totalShort = equips.reduce((s, e) => s + (shortByEq[e] || 0), 0);
+
+  document.getElementById('deptTitle').textContent = deptKey === 'MC' ? 'M/C' : deptKey;
+  document.getElementById('deptSubtitle').textContent = equips.length + '개 장비';
+  document.getElementById('deptTotalBadge').textContent = equips.length + '개 장비';
+
+  const sb = document.getElementById('deptShortBadge');
+  if (totalShort > 0) {
+    sb.textContent = '⚠️ ' + totalShort + '건 부족';
+    sb.style.display = 'inline-block';
+  } else {
+    sb.style.display = 'none';
   }
-  if(hdr<0){body.innerHTML='<div class="empty-state"><p>헤더를 찾을 수 없습니다</p></div>';return;}
-  const headers=rows[hdr].map(h=>String(h||'').trim());
-  const HIDE=['사진','vendor','k','벤더'];
-  const visIdx=headers.map((h,i)=>({h,i}))
-    .filter(({h})=>h&&!HIDE.some(n=>h.toLowerCase().includes(n)));
-  const dataRows=rows.slice(hdr+1).filter(row=>{
-    const no=iC>=0?String(row[iC]||'').trim():'';
-    return row.some(v=>v!=='')&&no&&no!=='nan'&&no!=='None';
-  });
-  const LEFT=['part','model','description','type','비고','desc'];
-  const isL=h=>LEFT.some(k=>h.toLowerCase().replace(/\s/g,'').includes(k));
-  let parts=0,shorts=0,zeros=0;
-  /* store visIdx globally for sort */
-  window._splVisIdx=visIdx;
-  window._splIsL=isL;
-  window._splSortCol=-1;
-  window._splSortDir='asc';
-  const thStyle='cursor:pointer;user-select:none;white-space:nowrap;';
-  const thead=`<thead><tr>${visIdx.map(({h},vi)=>
-    `<th class="${isL(h)?'':'c'}" style="${thStyle}" onclick="splSort(${vi})" data-vi="${vi}">
-      ${esc(h)} <span class="sort-ind" id="sind${vi}"></span></th>`
-  ).join('')}</tr></thead>`;
-  const tbody=`<tbody>${dataRows.map(row=>{
-    const no=iC>=0?String(row[iC]||'').trim():'';
-    const stock=stockCache[no]!==undefined?Number(stockCache[no])||0:(skC>=0?Number(row[skC])||0:0);
-    const safety=sqC>=0?Number(row[sqC])||0:0;
-    const short=safety>0&&stock<safety;
-    const zero=stock===0&&!short;
-    if(short)shorts++;if(zero)zeros++;parts++;
-    const rowCls=short?'row-short':zero?'row-zero':'';
-    const tds=visIdx.map(({h,i})=>{
-      const v=i===skC?stock:(row[i]!==undefined?row[i]:'');
-      const cls=isL(h)?'':'c';
-      const content=i===iC?`<span class="item-no" style="cursor:pointer" onclick="showCrossRef('${esc(String(v))}')" title="타 장비 사용 확인">${esc(String(v))}</span>`:esc(String(v));
-      return`<td class="${cls}">${content}</td>`;
-    }).join('');
-    return`<tr class="${rowCls}">${tds}</tr>`;
-  }).join('')}</tbody>`;
-  const si=shorts>0
-    ?`<span class="spl-short-b">⚠️ 부족 ${shorts}건</span>`
-    :`<span class="spl-ok-b">✅ 이상 없음</span>`;
-  const shortBtn=shorts>0
-    ?`<button class="btn-shortfirst" onclick="splSortShortFirst()">⚠️ 부족 먼저</button>`:'';
-  document.getElementById('splStats').innerHTML=`<span>총 <b>${parts}</b>개 파트</span>${si}${shortBtn}`;
-  body.innerHTML=`<table>${thead}${tbody}</table>`;
-  /* update dashboard if visible */
-  if(splDashVisible)renderSplDash(parts,shorts,zeros,window._currentSplSheet||'');
-}
 
-function splSort(vi){
-  const tbl=document.querySelector('#splBody table');
-  if(!tbl)return;
-  const visIdx=window._splVisIdx||[];
-  if(vi>=visIdx.length)return;
-  /* toggle direction */
-  if(window._splSortCol===vi)window._splSortDir=window._splSortDir==='asc'?'desc':'asc';
-  else{window._splSortCol=vi;window._splSortDir='asc';}
-  const dir=window._splSortDir;
-  /* update indicators */
-  document.querySelectorAll('.sort-ind').forEach(s=>s.textContent='');
-  const ind=document.getElementById(`sind${vi}`);
-  if(ind)ind.textContent=dir==='asc'?' ↑':' ↓';
-  /* sort rows */
-  const tbody=tbl.querySelector('tbody');
-  const rows=[...tbody.querySelectorAll('tr')];
-  rows.sort((a,b)=>{
-    const av=a.cells[vi]?a.cells[vi].textContent.trim():'';
-    const bv=b.cells[vi]?b.cells[vi].textContent.trim():'';
-    const an=parseFloat(av),bn=parseFloat(bv);
-    if(!isNaN(an)&&!isNaN(bn))return dir==='asc'?an-bn:bn-an;
-    return dir==='asc'?av.localeCompare(bv,'ko'):bv.localeCompare(av,'ko');
-  });
-  rows.forEach(r=>tbody.appendChild(r));
-}
+  const body = document.getElementById('deptBody');
+  const layData = layouts[deptKey];
 
-function splSortShortFirst(){
-  const tbody=document.querySelector('#splBody tbody');
-  if(!tbody)return;
-  document.querySelectorAll('.sort-ind').forEach(s=>s.textContent='');
-  window._splSortCol=-1;
-  const rows=[...tbody.querySelectorAll('tr')];
-  const shorts=rows.filter(r=>r.classList.contains('row-short'));
-  const zeros=rows.filter(r=>r.classList.contains('row-zero'));
-  const rest=rows.filter(r=>!r.classList.contains('row-short')&&!r.classList.contains('row-zero'));
-  [...shorts,...zeros,...rest].forEach(r=>tbody.appendChild(r));
-}
+  // 카드 그리드 HTML (항상 만들어 놓음)
+  const cardGrid = equips.length > 0
+    ? '<div class="eq-grid">' + equips.map(eq => {
+        const sc = shortByEq[eq] || 0;
+        const cnt = cntByEq[eq] || 0;
+        return `<div class="eq-card${sc > 0 ? ' short' : ''}" onclick="openEquip('${eq.replace(/'/g,"\\'")}')">
+          <div>
+            <div class="eq-name">${esc(eq)}</div>
+            <div class="eq-cnt">파트 ${cnt}개</div>
+          </div>
+          ${sc > 0 ? `<span class="eq-short-badge">⚠️ ${sc}건 부족</span>` : ''}
+        </div>`;
+      }).join('') + '</div>'
+    : '<div class="empty"><div class="icon">🔧</div><p>장비 정보 없음</p></div>';
 
-function filterSPL(){
-  const q=document.getElementById('splSearch').value.toLowerCase().trim();
-  document.querySelectorAll('#splBody tbody tr').forEach(tr=>{
-    tr.style.display=!q||tr.textContent.toLowerCase().includes(q)?'':'none';
-  });
-}
+  if (layData && layData.length > 0) {
+    // 배치도 + 카드 그리드 같이 표시
+    body.innerHTML =
+      '<div class="section-label">📐 장비 배치도</div>' +
+      renderLayout(layData, shortByEq) +
+      '<div class="section-label">🔧 장비 선택</div>' +
+      cardGrid;
 
-/* ════ SPL Dashboard ════ */
-let splDashVisible=false;
-function toggleSplDash(){
-  splDashVisible=!splDashVisible;
-  const dash=document.getElementById('splDash');
-  const btn=document.getElementById('btnDash');
-  dash.style.display=splDashVisible?'flex':'none';
-  btn.classList.toggle('off',!splDashVisible);
-}
-
-function renderSplDash(parts,shorts,zeros,sheetName){
-  const el=document.getElementById('splDash');
-  if(!el)return;
-  const ok=parts-shorts-zeros;
-  /* donut */
-  const total=parts||1;
-  const r=40,cx=50,cy=50,circ=2*Math.PI*r;
-  function arc(val,offset,color){
-    if(!val)return'';
-    const dash=circ*val/total;
-    return`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}"
-      stroke-width="14" stroke-dasharray="${dash} ${circ-dash}"
-      stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+} else {
+    body.innerHTML = cardGrid;
   }
-  const offS=0, offZ=circ*shorts/total, offO=offZ+circ*zeros/total;
-  const donutSvg=`<svg viewBox="0 0 100 100">
-    <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bd2)" stroke-width="14"/>
-    ${arc(shorts,offS,'#ef4444')}${arc(zeros,offZ,'#f97316')}${arc(ok,offO,'#22c55e')}
-    <text x="50" y="46" text-anchor="middle" font-size="13" font-weight="800" fill="var(--navy)">${parts}</text>
-    <text x="50" y="58" text-anchor="middle" font-size="8" fill="var(--muted2)">파트</text>
-  </svg>`;
 
-  /* shortage items */
-  const shortItems=allParts.filter(p=>p.sheet===sheetName&&p.safetyQty>0&&p.stock<p.safetyQty)
-    .sort((a,b)=>(a.stock/Math.max(a.safetyQty,1))-(b.stock/Math.max(b.safetyQty,1)));
-  const shortHtml=shortItems.length
-    ?shortItems.map(p=>`<div class="dash-short-item">
-        <div class="dsi-no">${esc(p.itemNo)}</div>
-        <div class="dsi-desc">${esc(p.model||p.part||p.desc1||'-')}</div>
-        <div class="dsi-stock">재고 ${p.stock} / Safety ${p.safetyQty}</div>
-      </div>`).join('')
-    :`<div class="dash-none">부족 파트 없음 ✅</div>`;
-
-  el.innerHTML=`
-    <div class="dash-sec">
-      <div class="dash-sec-title">파트 현황</div>
-      <div class="dash-kpi">
-        <div class="dash-kpi-card"><div class="kv kv-total">${parts}</div><div class="kl">총 파트</div></div>
-        <div class="dash-kpi-card"><div class="kv kv-ok">${ok}</div><div class="kl">이상없음</div></div>
-        <div class="dash-kpi-card"><div class="kv kv-short">${shorts}</div><div class="kl">Safety 미달</div></div>
-        <div class="dash-kpi-card"><div class="kv kv-zero">${zeros}</div><div class="kl">재고 없음</div></div>
-      </div>
-    </div>
-    <div class="dash-sec">
-      <div class="dash-sec-title">비율</div>
-      <div class="dash-donut">${donutSvg}</div>
-      <div class="dash-legend">
-        <div class="dash-leg-item"><div class="dash-leg-dot" style="background:#ef4444"></div>Safety 미달 (${shorts})</div>
-        <div class="dash-leg-item"><div class="dash-leg-dot" style="background:#f97316"></div>재고없음 (${zeros})</div>
-        <div class="dash-leg-item"><div class="dash-leg-dot" style="background:#22c55e"></div>이상없음 (${ok})</div>
-      </div>
-    </div>
-    <div class="dash-sec" style="flex:1">
-      <div class="dash-sec-title">⚠️ 부족 파트 ${shortItems.length}건</div>
-      <div class="dash-short-list">${shortHtml}</div>
-    </div>
-    <div class="dash-sec">
-      <div class="dash-sec-title">🔗 동일 파트 타 장비 사용</div>
-      <div id="dashCrossRef" style="font-size:11px;color:var(--muted2)">파트 번호를 클릭하세요</div>
-    </div>`;
+  goTo(1);
 }
 
-/* ════ Cross Reference ════ */
-function showCrossRef(itemNo){
-  const el=document.getElementById('dashCrossRef');
-  if(!el)return;
-  if(!splDashVisible)toggleSplDash();
-  const curSheet=window._currentSplSheet||'';
-  const others=allParts.filter(p=>p.itemNo===itemNo&&p.sheet!==curSheet);
-  if(!others.length){
-    el.innerHTML=`<div style="color:var(--muted2);padding:6px 0"><b>${esc(itemNo)}</b><br>다른 장비에서 사용 없음</div>`;
+/* ── 배치도 테이블 렌더링 ── */
+function renderLayout(rows, shortByEq) {
+  let html = '<div class="layout-wrap"><table class="layout-table"><tbody>';
+  for (const row of rows) {
+    html += '<tr>';
+    for (const cell of row) {
+      if (cell === 0) continue; // merged cell coverage → skip
+      if (typeof cell === 'object') {
+        const rs = cell.rs || 1;
+        const cs = cell.cs || 1;
+        const lnk = cell.lnk || '';
+        const t = cell.t || '';
+        const bg = cell.bg || '';
+        const isShort = lnk && (shortByEq[lnk] || 0) > 0;
+        let cls = '';
+        let style = '';
+        let onclick = '';
+        if (lnk) {
+          cls = ' class="lc' + (isShort ? ' lshort' : '') + '"';
+          onclick = ` onclick="openEquip('${lnk.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"`;
+          if (bg && !isShort) style = ` style="background:#${bg}"`;
+        } else if (bg) {
+          style = ` style="background:#${bg}"`;
+        }
+        const rsp = rs > 1 ? ` rowspan="${rs}"` : '';
+        const csp = cs > 1 ? ` colspan="${cs}"` : '';
+        html += `<td${cls}${style}${onclick}${rsp}${csp}>${esc(t)}</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  return html;
+}
+
+/* ── 장비 SPL 열기 ── */
+function openEquip(eqName) {
+  currentEq = eqName;
+  currentParts = allParts.filter(p => p.eq === eqName);
+
+  document.getElementById('splTitle').textContent = eqName;
+  const short = currentParts.filter(p => p.stock <= p.safety && p.safety > 0).length;
+  document.getElementById('splSubtitle').textContent =
+    currentParts.length + '개' + (short > 0 ? ' · ⚠️' + short : '');
+
+  document.getElementById('splInput').value = '';
+  renderSPL(currentParts);
+  goTo(2);
+}
+
+/* ── SPL 렌더링 ── */
+function renderSPL(parts) {
+  const el = document.getElementById('splList');
+  document.getElementById('splMeta').textContent = parts.length + '개 파트';
+
+  if (!parts.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">😶</div><p>검색 결과 없음</p></div>';
     return;
   }
-  const grouped={};
-  others.forEach(p=>{if(!grouped[p.sheet])grouped[p.sheet]=p;});
-  el.innerHTML=`<div style="margin-bottom:6px;color:var(--txt2);font-weight:700">${esc(itemNo)}</div>`
-    +Object.values(grouped).map(p=>{
-      const isS=p.safetyQty>0&&p.stock<p.safetyQty;
-      const col=isS?'#c53030':p.stock===0?'#c2410c':'var(--txt2)';
-      return`<div style="padding:5px 0;border-bottom:1px solid var(--bd);font-size:11px">
-        <b style="color:var(--navy)">${esc(p.sheet)}</b>
-        <span style="color:${col};float:right;font-weight:700">재고 ${p.stock}${isS?' ⚠️':''}</span>
+
+  const show = parts.slice(0, 300);
+  el.innerHTML =
+    '<div class="spl-list-wrap">' +
+    show.map(p => {
+      const isLow = p.stock <= p.safety && p.safety > 0;
+      const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
+      const stk = p.stock != null ? p.stock : '-';
+      return `<div class="spl-item${isLow ? ' short' : ''}">
+        <div class="spl-main-row">
+          <span class="spl-itemno">${esc(p.itemNo)}</span>
+          <span class="spl-stk ${isLow ? 'stock-warn' : 'stock-ok'}">${stk}</span>
+        </div>
+        ${p.model ? `<div class="spl-model-line">${esc(p.model)}</div>` : ''}
+        ${desc ? `<div class="spl-desc">${esc(desc)}</div>` : ''}
       </div>`;
-    }).join('');
+    }).join('') +
+    '</div>' +
+    (parts.length > 300 ? `<div class="list-end">300개 표시 중 (전체 ${parts.length}개)</div>` : '<div class="list-end">— 끝 —</div>');
 }
 
-/* ════ Shortage ════ */
-function buildShortage(){
-  document.getElementById('shortageTotal').textContent=`총 ${shortParts.length}건`;
-  const el=document.getElementById('shortageOut');
-  if(!shortParts.length){
-    el.innerHTML='<div class="empty-state"><div class="ei">✅</div><p>청구 필요 자재 없음</p></div>';return;
-  }
-  const rows=shortParts.map(p=>`<tr class="row-short">
-    <td><b>${esc(p.sheet)}</b></td>
-    <td><span class="item-no">${esc(p.itemNo)}</span></td>
-    <td>${esc(p.type)||'-'}</td>
-    <td>${esc(trunc(p.part,22))}</td>
-    <td>${esc(trunc(p.desc1,40))}</td>
-    <td class="c">${p.stock}</td>
-    <td class="c">${p.safetyQty}</td>
-    <td class="c" style="font-weight:800;color:#c53030">▲${p.safetyQty-p.stock}</td>
-  </tr>`).join('');
-  el.innerHTML=`<div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>장비 시트</th><th>Item No</th><th>Type</th>
-      <th>Part</th><th>Description 1</th>
-      <th class="c">현재 재고</th><th class="c">Safety Qty</th><th class="c">부족</th>
-    </tr></thead><tbody>${rows}</tbody></table></div>`;
+/* ── SPL 검색 ── */
+function filterSPL() {
+  const q = document.getElementById('splInput').value.trim().toLowerCase();
+  if (!q) { renderSPL(currentParts); return; }
+  const terms = q.split(/\s+/).filter(Boolean);
+  const filtered = currentParts.filter(p => {
+    const hay = [p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2].join(' ').toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  renderSPL(filtered);
+}
+function clearSPL() {
+  document.getElementById('splInput').value = '';
+  renderSPL(currentParts);
 }
 
-/* ════ Global Search ════ */
-function schedSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(doSearch,200);}
-function doSearch(){
-  const kw=document.getElementById('searchInput').value.trim();
-  const meta=document.getElementById('searchMeta');
-  const out=document.getElementById('searchOut');
-  if(!kw){
-    meta.textContent='';
-    out.innerHTML='<div class="empty-state"><div class="ei">🔍</div><p>검색어를 입력하세요</p></div>';return;
-  }
-  if(!allParts.length){out.innerHTML='<div class="empty-state"><p>먼저 Excel 파일을 불러오세요</p></div>';return;}
-  const kwL=kw.toLowerCase();
-  const found=allParts.filter(p=>p.itemNo.toLowerCase().includes(kwL)||
-    p.part.toLowerCase().includes(kwL)||p.desc1.toLowerCase().includes(kwL));
-  if(!found.length){
-    meta.textContent=`"${kw}" — 검색 결과 없음`;
-    out.innerHTML='<div class="empty-state"><div class="ei">😕</div><p>검색 결과가 없습니다</p></div>';return;
-  }
-  const shortC=found.filter(p=>p.safetyQty>0&&p.stock<p.safetyQty).length;
-  meta.innerHTML=`<b>${found.length}</b>건`+(shortC>0?` &nbsp;·&nbsp; <span style="color:#c53030;font-weight:700">⚠️ 안전재고 미달 ${shortC}건</span>`:'');
-  const rows=found.map(p=>{
-    const isShort=p.safetyQty>0&&p.stock<p.safetyQty;
-    const isZero=p.stock===0&&!isShort;
-    const st=isShort?'<span class="chip chip-short">미달</span>'
-      :isZero?'<span class="chip chip-zero">재고없음</span>'
-      :'<span class="chip chip-ok">OK</span>';
-    return`<tr class="${isShort?'row-short':isZero?'row-zero':''}">
-      <td><b>${hlEsc(p.sheet,kw)}</b></td>
-      <td><span class="item-no">${hlEsc(p.itemNo,kw)}</span></td>
-      <td>${p.type||'-'}</td>
-      <td>${hlEsc(trunc(p.part,22),kw)}</td>
-      <td>${hlEsc(trunc(p.desc1,40),kw)}</td>
-      <td class="c">${p.stock}</td><td class="c">${p.safetyQty||'-'}</td>
-      <td class="c">${st}</td></tr>`;
-  }).join('');
-  out.innerHTML=`<div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>장비 시트</th><th>Item No</th><th>Type</th>
-      <th>Part</th><th>Description 1</th>
-      <th class="c">재고</th><th class="c">Safety</th><th class="c">Status</th>
-    </tr></thead><tbody>${rows}</tbody></table></div>`;
+/* ── 화면 전환 ── */
+function goTo(n) {
+  document.getElementById('screens').className = 's' + n;
+  // 화면 최상단으로
+  if (n === 1) document.querySelector('#s-dept .scroll-body').scrollTop = 0;
+  if (n === 2) document.getElementById('splList').scrollTop = 0;
 }
-function clearSearch(){document.getElementById('searchInput').value='';schedSearch();document.getElementById('searchInput').focus();}
-
-/* ════ Navigation + History ════ */
-function gotoTab(name,el,push=true){
-  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('on'));
-  if(el)el.classList.add('on');
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.getElementById('view-'+name).classList.add('on');
-  if(name==='home')showHomeMap(false);
-  if(name==='search')setTimeout(()=>document.getElementById('searchInput').focus(),60);
-  if(push)history.pushState({v:name},'','');
+function goBack(from) {
+  goTo(from - 1);
 }
 
-function showRawView(name){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  document.getElementById('view-'+name).classList.add('on');
+/* ── 이스케이프 ── */
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-window.addEventListener('popstate',e=>{
-  const s=e.state;
-  if(!s||s.v==='home'){
-    if(wb){
-      document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('on'));
-      document.getElementById('tab-home').classList.add('on');
-      showRawView('home');showHomeMap(false);
-    }
-  } else if(s.v==='dept'&&wb){
-    openDept(s.k,s.n,false);
-  } else if(s.v==='search'||s.v==='shortage'){
-    gotoTab(s.v,document.getElementById('tab-'+s.v),false);
-  }
-});
-
-/* ════ Helpers ════ */
-function setP(p,t,d){
-  document.getElementById('progFill').style.width=p+'%';
-  document.getElementById('loadTxt').textContent=t;
-  document.getElementById('loadDet').textContent=d;
-}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
-function trunc(s,n){s=String(s||'');return s.length>n?s.slice(0,n)+'…':s;}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function hlEsc(text,kw){
-  if(!text||!kw)return esc(text);
-  const safe=esc(String(text));
-  return safe.replace(new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark>${m}</mark>`);
-}
+loadData();
 </script>
 </body>
 </html>
