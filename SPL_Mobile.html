@@ -398,6 +398,9 @@ function openDept(deptKey) {
 function renderLayout(rows, shortByEq) {
   if (!rows || rows.length === 0) return '';
 
+  // lnk 없는 셀에 같은 bg + 텍스트 앞글자 기준으로 lnk 자동 상속
+  inferLinks(rows);
+
   // Pass 1: covered 위치 계산 + maxCol 탐색
   const covered = new Set(); // "r,c"
   let maxCol = 0;
@@ -437,7 +440,7 @@ function renderLayout(rows, shortByEq) {
         const bg  = cell.bg  || '';
         const isShort = lnk && (shortByEq[lnk] || 0) > 0;
         let cls = '', style = '', onclick = '';
-        if (lnk) {
+        if (lnk && t) {  // 텍스트 있는 셀만 클릭 가능
           cls = ' class="lc' + (isShort ? ' lshort' : '') + '"';
           onclick = ` onclick="openEquip('${lnk.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"`;
           if (bg && !isShort) style = ` style="background:#${bg}"`;
@@ -464,15 +467,14 @@ function scaleCells(table, scale) {
   const f = Math.max(8,  Math.round(12 * scale));
   const p = Math.round(5 * scale);
   table.querySelectorAll('td').forEach(td => {
-    td.style.minWidth  = w + 'px';
-    td.style.height    = h + 'px';
-    td.style.fontSize  = f + 'px';
-    td.style.padding   = p + 'px ' + (p+2) + 'px';
+    td.style.minWidth = w + 'px';
+    td.style.height   = h + 'px';
+    td.style.fontSize = f + 'px';
+    td.style.padding  = p + 'px ' + (p+2) + 'px';
   });
 }
 
 function setupLayoutZoom(wrap, table) {
-  // 가로/세로 모두 화면에 맞는 초기 scale 계산
   const availW = wrap.clientWidth - 16;
   const availH = window.innerHeight * 0.62;
   const tw = table.scrollWidth, th = table.scrollHeight;
@@ -483,16 +485,16 @@ function setupLayoutZoom(wrap, table) {
   wrap.style.maxHeight = '65vh';
   wrap.style.height    = '';
 
-  // 이전 리스너 제거
   if (wrap._lzStart) {
     wrap.removeEventListener('touchstart', wrap._lzStart, {passive:false});
     wrap.removeEventListener('touchmove',  wrap._lzMove,  {passive:false});
     wrap.removeEventListener('touchend',   wrap._lzEnd);
   }
-  let pDist = 0, pScaleStart = 1, lastTap = 0;
+  let pDist = 0, pScaleStart = 1, lastTap = 0, wasPinch = false;
 
   wrap._lzStart = e => {
     if (e.touches.length === 2) {
+      wasPinch = true;
       pDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY);
@@ -509,9 +511,15 @@ function setupLayoutZoom(wrap, table) {
     scaleCells(table, _lzScale);
     e.preventDefault();
   };
-  wrap._lzEnd = () => {
+  wrap._lzEnd = e => {
+    // 핀치 종료: 두 손가락 다 뗐을 때만 플래그 해제, 더블탭 무시
+    if (wasPinch) {
+      if (e.touches.length === 0) wasPinch = false;
+      return;
+    }
+    // 단일 탭: 더블탭이면 원래 크기 복원
     const now = Date.now();
-    if (now - lastTap < 280) { // 더블탭 → 원래 크기
+    if (now - lastTap < 280) {
       _lzScale = _lzBaseScale;
       scaleCells(table, _lzScale);
     }
@@ -520,6 +528,36 @@ function setupLayoutZoom(wrap, table) {
   wrap.addEventListener('touchstart', wrap._lzStart, {passive:false});
   wrap.addEventListener('touchmove',  wrap._lzMove,  {passive:false});
   wrap.addEventListener('touchend',   wrap._lzEnd);
+}
+
+/* ── 배치도 링크 자동 상속 ──
+   같은 bg + 텍스트 앞글자 일치 → 같은 장비로 간주해서 lnk 상속 */
+function inferLinks(rows) {
+  // bg → [{lnk, t}] 수집
+  const bgMap = {};
+  for (const row of rows) {
+    for (const cell of row) {
+      if (!cell || typeof cell !== 'object' || !cell.lnk || !cell.bg || !cell.t) continue;
+      (bgMap[cell.bg] = bgMap[cell.bg] || []).push({lnk: cell.lnk, t: cell.t});
+    }
+  }
+  // lnk 없는 셀에 상속
+  for (const row of rows) {
+    for (const cell of row) {
+      if (!cell || typeof cell !== 'object' || cell.lnk || !cell.bg || !cell.t) continue;
+      const candidates = bgMap[cell.bg];
+      if (!candidates) continue;
+      for (const c of candidates) {
+        // 앞 3글자 이상 일치하면 같은 장비로 판단
+        if (sharePrefix(cell.t, c.t, 3)) { cell.lnk = c.lnk; break; }
+      }
+    }
+  }
+}
+function sharePrefix(a, b, minLen) {
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return i >= minLen;
 }
 
 /* ── 장비 SPL 열기 ── */
