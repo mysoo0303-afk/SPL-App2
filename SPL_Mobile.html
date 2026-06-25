@@ -175,6 +175,31 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .gclear{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0;}
 .gmeta{font-size:11px;color:var(--sub);padding:6px 14px 2px;flex-shrink:0;}
 .spl-eq-tag{font-size:11px;color:var(--accent);margin-top:1px;}
+
+/* ════ 장비 리스트 테이블 ════ */
+.eq-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;
+  margin:8px;border-radius:12px;border:1px solid var(--bd);
+  box-shadow:0 1px 4px var(--shadow);}
+.eq-tbl{border-collapse:collapse;font-size:11.5px;width:100%;
+  min-width:480px;background:var(--panel);}
+.eq-tbl thead th{
+  background:#1a2e5a;color:#e0eaff;font-size:10.5px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase;padding:10px 10px;
+  border-right:1px solid rgba(255,255,255,.12);white-space:nowrap;
+  text-align:center;position:sticky;top:0;z-index:5;}
+.eq-tbl thead th:last-child{border-right:none;}
+.eq-tbl tbody td{
+  padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.06);
+  border-right:1px solid rgba(0,0,0,.06);vertical-align:middle;
+  text-align:center;white-space:nowrap;color:var(--text);}
+.eq-tbl tbody td:last-child{border-right:none;}
+.eq-tbl tbody tr:nth-child(even) td{background:#f5f8ff;}
+.eq-tbl td.eq-merge{
+  font-weight:800;font-size:13px;color:var(--primary);
+  border-right:2px solid rgba(26,46,90,.2)!important;
+  background:#ebf2ff!important;}
+.eq-tbl tbody tr:first-child td{border-top:none;}
+.eq-tbl tr.grp-start td{border-top:2px solid rgba(26,46,90,.18)!important;}
 </style>
 </head>
 <body>
@@ -321,12 +346,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 </div>
 
 <script>
-const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
+const DATA_URL = 'https://script.google.com/macros/s/AKfycbyh7F0PM2x25DyAFLL1MAINJ3Sbn6RxWHzUFDqwaCwIzqxPMfLyyowytXl-2_ArPfMO/exec';
 const STOCK_URL = 'https://docs.google.com/spreadsheets/d/1tAelq8-WQClT2f9U4fsUwxlTLn0sW6e39CCFkZu3YPY/export?format=csv&gid=1876732220';
 
 let allParts = [];
 let depts = {};
 let layouts = {};
+let equipLists = {};     // 부서별 장비 리스트 (헤더 + 로우)
 let stockMap = {};
 let eqToDept = {};       // eq명 → 부서명 역방향 맵
 let currentDept = '';
@@ -362,9 +388,10 @@ async function loadData() {
     setMsg('데이터 파싱 중...');
     const data = await r1.json();          // ← signal이 살아있어 여기서도 abort 가능
     clearTimeout(splTimer);
-    allParts = data.parts || [];
-    depts    = data.depts  || {};
-    layouts  = data.layouts || {};
+    allParts    = data.parts || [];
+    depts       = data.depts  || {};
+    layouts     = data.layouts || {};
+    equipLists  = data.equipLists || {};
     document.getElementById('updateBadge').textContent = data.updated || '';
     // eq → dept 역방향 맵 구성
     eqToDept = {};
@@ -502,9 +529,71 @@ function switchDeptTab(n) {
       if (wrap && table) setupLayoutZoom(wrap, table);
     }));
   } else {
-    body.innerHTML = _deptListHtml;
+    renderEquipListTable(currentDept, body);
   }
   body.scrollTop = 0;
+}
+
+/* ── 장비 리스트 테이블 렌더링 ── */
+function renderEquipListTable(deptKey, body) {
+  const data = equipLists[deptKey];
+
+  // equipLists 데이터 없으면 카드 그리드로 fallback
+  if (!data || !data.headers || !data.rows || !data.rows.length) {
+    body.innerHTML = _deptListHtml;
+    return;
+  }
+
+  const { headers, rows } = data;
+  const MERGE_COLS = Math.min(3, headers.length); // 앞 3열 병합 감지
+
+  // rowspan 계산: 연속으로 같은 값이면 병합
+  const spans = rows.map(() => new Array(headers.length).fill(1));
+  const skip  = rows.map(() => new Array(headers.length).fill(false));
+
+  for (let c = 0; c < MERGE_COLS; c++) {
+    let r = 0;
+    while (r < rows.length) {
+      const val = rows[r][c];
+      if (val === '' || val === null || val === undefined) { r++; continue; }
+      let span = 1;
+      while (r + span < rows.length && rows[r + span][c] == val) span++;
+      if (span > 1) {
+        spans[r][c] = span;
+        for (let dr = 1; dr < span; dr++) skip[r + dr][c] = true;
+      }
+      r += span;
+    }
+  }
+
+  // thead
+  const thead = '<thead><tr>' +
+    headers.map(h => `<th>${esc(String(h))}</th>`).join('') +
+    '</tr></thead>';
+
+  // tbody
+  let prevGroup = null;
+  const tbody = rows.map((row, r) => {
+    // 그룹 시작 감지 (첫 병합열 값이 바뀔 때 구분선)
+    const grpVal = spans[r][0] > 1 ? row[0] : null;
+    const isGrpStart = grpVal !== null && grpVal !== prevGroup;
+    if (isGrpStart) prevGroup = grpVal;
+
+    const tds = row.map((val, c) => {
+      if (skip[r][c]) return '';
+      const rs = spans[r][c] > 1 ? ` rowspan="${spans[r][c]}"` : '';
+      const isMerge = spans[r][c] > 1 && c < MERGE_COLS;
+      const cls = isMerge ? ' class="eq-merge"' : '';
+      return `<td${cls}${rs}>${esc(val !== null && val !== undefined ? String(val) : '')}</td>`;
+    }).join('');
+
+    return `<tr${isGrpStart ? ' class="grp-start"' : ''}>${tds}</tr>`;
+  }).join('');
+
+  body.innerHTML =
+    '<div class="eq-tbl-wrap">' +
+    `<table class="eq-tbl">${thead}<tbody>${tbody}</tbody></table>` +
+    '</div>';
 }
 
 /* ── 배치도 테이블 렌더링 ──
