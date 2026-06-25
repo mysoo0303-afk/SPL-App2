@@ -27,7 +27,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* ── 화면 슬라이드 ── */
-#app{position:fixed;inset:0;overflow:hidden;}
+#app{position:fixed;inset:0;bottom:calc(54px + env(safe-area-inset-bottom));overflow:hidden;}
 .screen{width:100vw;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:var(--bg);}
 #screens{display:flex;width:300vw;height:100%;
   transition:transform .3s ease;}
@@ -132,6 +132,43 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .list-end{text-align:center;color:var(--sub);font-size:12px;padding:20px;margin-bottom:40px;}
 .empty{text-align:center;padding:60px 20px;color:var(--sub);}
 .empty .icon{font-size:40px;margin-bottom:12px;}
+
+/* ════ 하단 탭바 ════ */
+#tab-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:calc(54px + env(safe-area-inset-bottom));
+  background:var(--primary);display:flex;z-index:200;
+  box-shadow:0 -2px 10px rgba(0,0,0,.25);}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;color:rgba(255,255,255,.45);border:none;background:none;cursor:pointer;
+  padding-bottom:env(safe-area-inset-bottom);font-size:11px;font-weight:600;
+  transition:color .15s;}
+.tab-btn.active{color:#fff;}
+.tab-btn.active .tab-icon::after{
+  content:'';display:block;width:24px;height:2px;
+  background:#fff;border-radius:2px;margin:2px auto 0;}
+.tab-icon{font-size:22px;line-height:1;}
+
+/* ════ 전역 검색 화면 ════ */
+#g-search{
+  position:absolute;inset:0;background:var(--bg);
+  flex-direction:column;display:none;z-index:50;}
+#g-search.active{display:flex;}
+.gsearch-hdr{background:var(--primary);color:#fff;
+  padding:max(14px,env(safe-area-inset-top)) 16px 12px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);}
+.gsearch-hdr-title{font-size:16px;font-weight:700;margin-bottom:10px;}
+.gsearch-bar-inner{display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);
+  border-radius:10px;padding:8px 12px;}
+.gsearch-bar-inner:focus-within{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5);}
+.ginput{flex:1;border:none;background:transparent;font-size:15px;outline:none;
+  color:#fff;}
+.ginput::placeholder{color:rgba(255,255,255,.5);}
+.gclear{background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0;}
+.gmeta{font-size:11px;color:var(--sub);padding:6px 14px 2px;flex-shrink:0;}
+.spl-eq-tag{font-size:11px;color:var(--accent);margin-top:1px;}
 </style>
 </head>
 <body>
@@ -244,7 +281,34 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
   </div>
 
 </div><!-- /screens -->
+
+  <!-- ════ 전역 검색 화면 ════ -->
+  <div id="g-search">
+    <div class="gsearch-hdr">
+      <div class="gsearch-hdr-title">🔍 전체 파트 검색</div>
+      <div class="gsearch-bar-inner">
+        <input class="ginput" id="gInput" type="search" inputmode="search"
+          placeholder="품번 · 부품명 · 장비명 검색..." autocomplete="off" oninput="filterGlobal()">
+        <button class="gclear" onclick="clearGlobal()">×</button>
+      </div>
+    </div>
+    <div class="gmeta" id="gMeta"></div>
+    <div class="scroll-body" id="gResults">
+      <div class="empty"><div class="icon">🔍</div><p>품번, 부품명, 장비명으로 검색</p></div>
+    </div>
+  </div>
+
 </div><!-- /app -->
+
+<!-- 하단 탭바 -->
+<div id="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(0)">
+    <span class="tab-icon">🏭</span>홈
+  </button>
+  <button class="tab-btn" onclick="switchTab(1)">
+    <span class="tab-icon">🔍</span>전체검색
+  </button>
+</div>
 
 <script>
 const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
@@ -254,9 +318,11 @@ let allParts = [];
 let depts = {};
 let layouts = {};
 let stockMap = {};
+let eqToDept = {};       // eq명 → 부서명 역방향 맵
 let currentDept = '';
 let currentEq = '';
 let currentParts = [];
+let activeTab = 0;
 
 /* ── 데이터 로드 ──
    fetchWithTimeout은 헤더만 커버 → 본문(.json/.text) 중 끊기면 무한대기.
@@ -287,6 +353,11 @@ async function loadData() {
     depts    = data.depts  || {};
     layouts  = data.layouts || {};
     document.getElementById('updateBadge').textContent = data.updated || '';
+    // eq → dept 역방향 맵 구성
+    eqToDept = {};
+    Object.entries(depts).forEach(([dept, eqs]) => {
+      eqs.forEach(eq => { eqToDept[eq] = dept; });
+    });
   } catch(e) {
     clearTimeout(splTimer);
     showErr(splCtrl.signal.aborted ? 'GitHub 로딩 시간 초과 (20초)' : e.message);
@@ -327,7 +398,7 @@ async function loadData() {
 
 
 /* ── 부서 열기 ── */
-function openDept(deptKey) {
+function openDept(deptKey, noNav = false) {
   currentDept = deptKey;
   const equips = depts[deptKey] || [];
 
@@ -389,7 +460,7 @@ function openDept(deptKey) {
     body.innerHTML = cardGrid;
   }
 
-  goTo(1);
+  if (!noNav) goTo(1);
 }
 
 /* ── 배치도 테이블 렌더링 ──
@@ -621,10 +692,87 @@ function clearSPL() {
   renderSPL(currentParts);
 }
 
+/* ── 탭 전환 ── */
+function switchTab(n) {
+  activeTab = n;
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === n));
+  const gs = document.getElementById('g-search');
+  if (n === 1) {
+    gs.classList.add('active');
+    setTimeout(() => document.getElementById('gInput').focus(), 100);
+  } else {
+    gs.classList.remove('active');
+  }
+}
+
+/* ── 전역 검색 ── */
+function filterGlobal() {
+  const q = document.getElementById('gInput').value.trim().toLowerCase();
+  if (!q) {
+    document.getElementById('gResults').innerHTML =
+      '<div class="empty"><div class="icon">🔍</div><p>품번, 부품명, 장비명으로 검색</p></div>';
+    document.getElementById('gMeta').textContent = '';
+    return;
+  }
+  const terms = q.split(/\s+/).filter(Boolean);
+  const results = allParts.filter(p => {
+    const hay = [p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2, p.eq].join(' ').toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  renderGlobal(results);
+}
+
+function clearGlobal() {
+  document.getElementById('gInput').value = '';
+  document.getElementById('gMeta').textContent = '';
+  document.getElementById('gResults').innerHTML =
+    '<div class="empty"><div class="icon">🔍</div><p>품번, 부품명, 장비명으로 검색</p></div>';
+}
+
+function renderGlobal(parts) {
+  const el = document.getElementById('gResults');
+  document.getElementById('gMeta').textContent = parts.length ? parts.length + '개 파트' : '';
+  if (!parts.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">😶</div><p>검색 결과 없음</p></div>';
+    return;
+  }
+  const show = parts.slice(0, 200);
+  el.innerHTML =
+    '<div class="spl-list-wrap">' +
+    show.map(p => {
+      const isLow = p.stock <= p.safety && p.safety > 0;
+      const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
+      const stk = p.stock != null ? p.stock : '-';
+      const dept = eqToDept[p.eq] || '';
+      const eqSafe = (p.eq || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const dptSafe = dept.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="spl-item${isLow ? ' short' : ''}" style="cursor:pointer"
+          onclick="openFromSearch('${eqSafe}','${dptSafe}')">
+        <div class="spl-main-row">
+          <span class="spl-itemno">${esc(p.itemNo)}</span>
+          <span class="spl-stk ${isLow ? 'stock-warn' : 'stock-ok'}">${stk}</span>
+        </div>
+        ${p.model ? `<div class="spl-model-line">${esc(p.model)}</div>` : ''}
+        ${desc ? `<div class="spl-desc">${esc(desc)}</div>` : ''}
+        <div class="spl-eq-tag">📍 ${esc(p.eq)}${dept ? ' · ' + esc(dept) : ''}</div>
+      </div>`;
+    }).join('') +
+    '</div>' +
+    (parts.length > 200
+      ? `<div class="list-end">200개 표시 (전체 ${parts.length}개)</div>`
+      : '<div class="list-end">— 끝 —</div>');
+}
+
+/* 검색결과에서 장비 열기: 부서 화면도 미리 세팅 후 장비 화면으로 */
+function openFromSearch(eqName, deptKey) {
+  switchTab(0);                          // 홈 탭으로 전환
+  if (deptKey) openDept(deptKey, true);  // 부서 화면 세팅 (화면 전환 없이)
+  openEquip(eqName);                     // 장비 화면으로 이동
+}
+
 /* ── 화면 전환 ── */
 function goTo(n) {
   document.getElementById('screens').className = 's' + n;
-  // 화면 최상단으로
   if (n === 1) document.querySelector('#s-dept .scroll-body').scrollTop = 0;
   if (n === 2) document.getElementById('splList').scrollTop = 0;
 }
