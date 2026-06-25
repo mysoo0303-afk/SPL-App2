@@ -300,9 +300,9 @@ async function loadData() {
   const stTimer = setTimeout(() => stCtrl.abort(), 8000);
   try {
     const r2 = await fetch(STOCK_URL + '&t=' + Date.now(), {signal: stCtrl.signal});
-    clearTimeout(stTimer);
     if (r2.ok) {
-      const csv = await r2.text();
+      const csv = await r2.text();  // signal 살아있는 상태에서 본문 읽기
+      clearTimeout(stTimer);
       csv.split('\n').slice(1).forEach(line => {
         const cols = line.split(',');
         if (cols.length >= 2) {
@@ -314,6 +314,8 @@ async function loadData() {
       allParts.forEach(p => {
         if (stockMap.hasOwnProperty(p.itemNo)) p.stock = stockMap[p.itemNo];
       });
+    } else {
+      clearTimeout(stTimer);
     }
   } catch(e) {
     clearTimeout(stTimer);
@@ -397,23 +399,51 @@ function openDept(deptKey) {
   goTo(1);
 }
 
-/* ── 배치도 테이블 렌더링 ── */
+/* ── 배치도 테이블 렌더링 ──
+   0 = colspan/rowspan 덮인 셀(skip) 또는 빈 셀(empty td 렌더 필요).
+   두 종류를 구분해서 열 위치 유지, trailing 빈 열 잘라냄. */
 function renderLayout(rows, shortByEq) {
+  if (!rows || rows.length === 0) return '';
+
+  // Pass 1: covered 위치 계산 + maxCol 탐색
+  const covered = new Set(); // "r,c"
+  let maxCol = 0;
+  for (let r = 0; r < rows.length; r++) {
+    for (let c = 0; c < rows[r].length; c++) {
+      const cell = rows[r][c];
+      if (!cell || typeof cell !== 'object') continue;
+      const rs = cell.rs || 1;
+      const cs = cell.cs || 1;
+      // span이 덮는 나머지 위치 기록
+      for (let dr = 0; dr < rs; dr++) {
+        for (let dc = 0; dc < cs; dc++) {
+          if (dr || dc) covered.add(`${r+dr},${c+dc}`);
+        }
+      }
+      // 콘텐츠가 있는 최대 열
+      if (cell.t || cell.lnk || cell.bg) maxCol = Math.max(maxCol, c + cs - 1);
+    }
+  }
+
+  // Pass 2: maxCol 까지만 렌더
   let html = '<div class="layout-wrap"><table class="layout-table"><tbody>';
-  for (const row of rows) {
+  for (let r = 0; r < rows.length; r++) {
     html += '<tr>';
-    for (const cell of row) {
-      if (cell === 0) continue; // merged cell coverage → skip
+    for (let c = 0; c <= maxCol && c < rows[r].length; c++) {
+      const cell = rows[r][c];
+      if (cell === 0) {
+        if (!covered.has(`${r},${c}`)) html += '<td></td>'; // 빈 셀 → 열 유지
+        // covered → skip
+        continue;
+      }
       if (typeof cell === 'object') {
         const rs = cell.rs || 1;
         const cs = cell.cs || 1;
         const lnk = cell.lnk || '';
-        const t = cell.t || '';
-        const bg = cell.bg || '';
+        const t   = cell.t   || '';
+        const bg  = cell.bg  || '';
         const isShort = lnk && (shortByEq[lnk] || 0) > 0;
-        let cls = '';
-        let style = '';
-        let onclick = '';
+        let cls = '', style = '', onclick = '';
         if (lnk) {
           cls = ' class="lc' + (isShort ? ' lshort' : '') + '"';
           onclick = ` onclick="openEquip('${lnk.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"`;
@@ -492,7 +522,7 @@ function clearSPL() {
   document.getElementById('splInput').value = '';
   renderSPL(currentParts);
 }
-오전 11:08 2026. 6. 25.
+
 /* ── 화면 전환 ── */
 function goTo(n) {
   document.getElementById('screens').className = 's' + n;
