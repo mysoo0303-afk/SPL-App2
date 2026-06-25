@@ -94,7 +94,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
   padding:8px;margin:0 8px 8px;border-radius:12px;
   border:1px solid var(--bd);background:var(--panel);
   box-shadow:0 1px 4px var(--shadow);position:relative;}
-.layout-table{border-collapse:collapse;font-size:12px;}
+.layout-table{border-collapse:collapse;font-size:12px;margin:0 auto;}
 .layout-table td{border:1px solid #c8d8e8;padding:6px 8px;
   white-space:nowrap;vertical-align:middle;text-align:center;
   min-width:64px;height:44px;}
@@ -157,50 +157,51 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
     </div>
     <div class="scroll-body">
       <div id="map-wrap">
-        <svg viewBox="0 0 370 910" xmlns="http://www.w3.org/2000/svg">
-          <rect width="370" height="910" rx="10" class="map-bg"/>
-          <!-- 좌측 세로 열: 가공 (원래 하단 좌측) -->
-          <rect class="zone-dept" x="10" y="10" width="78" height="270" rx="10" onclick="openDept('가공')"/>
-          <text class="zlabel" x="49" y="145">가공</text>
-          <!-- 우측 세로 열 (원래 1행): IMC ENDMILL → 세라믹 순 (상→하) -->
-          <rect class="zone-dept" x="260" y="10" width="100" height="270" rx="10" onclick="openDept('IMC ENDMILL')"/>
-          <text class="zlabel zlabel-sm" x="310" y="145">IMC ENDMILL</text>
-          <!-- 중간 상단: QA, 코팅2 -->
-          <rect class="zone-dept" x="104" y="10" width="42" height="84" rx="8" onclick="openDept('QA')"/>
-          <text class="zlabel zlabel-sm" x="125" y="52">QA</text>
-          <rect class="zone-dept" x="156" y="10" width="88" height="84" rx="10" onclick="openDept('코팅2')"/>
-          <text class="zlabel" x="200" y="52">코팅2</text>
+        <svg viewBox="0 0 370 455" xmlns="http://www.w3.org/2000/svg">
+          <rect width="370" height="455" rx="10" class="map-bg"/>
+          <!-- 가공 -->
+          <rect class="zone-dept" x="10" y="5" width="78" height="135" rx="10" onclick="openDept('가공')"/>
+          <text class="zlabel" x="49" y="72">가공</text>
+          <!-- IMC ENDMILL -->
+          <rect class="zone-dept" x="260" y="5" width="100" height="135" rx="10" onclick="openDept('IMC ENDMILL')"/>
+          <text class="zlabel zlabel-sm" x="310" y="72">IMC ENDMILL</text>
+          <!-- QA, 코팅2 -->
+          <rect class="zone-dept" x="104" y="5" width="42" height="42" rx="8" onclick="openDept('QA')"/>
+          <text class="zlabel zlabel-sm" x="125" y="26">QA</text>
+          <rect class="zone-dept" x="156" y="5" width="88" height="42" rx="10" onclick="openDept('코팅2')"/>
+          <text class="zlabel" x="200" y="26">코팅2</text>
           <!-- 연삭2 -->
-          <rect class="zone-dept" x="104" y="104" width="140" height="84" rx="10" onclick="openDept('연삭2')"/>
-          <text class="zlabel" x="174" y="146">연삭2</text>
+          <rect class="zone-dept" x="104" y="52" width="140" height="42" rx="10" onclick="openDept('연삭2')"/>
+          <text class="zlabel" x="174" y="73">연삭2</text>
           <!-- 합금2, 금형2 -->
-          <rect class="zone-dept" x="120" y="198" width="57" height="82" rx="10" onclick="openDept('합금2')"/>
-          <text class="zlabel" x="148" y="239">합금2</text>
-          <rect class="zone-dept" x="187" y="198" width="57" height="82" rx="10" onclick="openDept('금형2')"/>
-          <text class="zlabel" x="215" y="239">금형2</text>
+          <rect class="zone-dept" x="120" y="99" width="57" height="41" rx="10" onclick="openDept('합금2')"/>
+          <text class="zlabel zlabel-sm" x="148" y="119">합금2</text>
+          <rect class="zone-dept" x="187" y="99" width="57" height="41" rx="10" onclick="openDept('금형2')"/>
+          <text class="zlabel zlabel-sm" x="215" y="119">금형2</text>
           <!-- 잔디 -->
-          <rect class="zone-grass" x="104" y="296" width="140" height="310" rx="10"/>
-          <!-- 우측 열: 원료, M/C, 금형1, 합금1, 드릴, 세라믹 -->
-          <rect class="zone-dept" x="260" y="296" width="100" height="100" rx="10" onclick="openDept('원료')"/>
-          <text class="zlabel" x="310" y="346">원료</text>
-          <rect class="zone-dept" x="260" y="406" width="100" height="88" rx="10" onclick="openDept('MC')"/>
-          <text class="zlabel" x="310" y="450">M/C</text>
-          <rect class="zone-dept" x="260" y="504" width="100" height="84" rx="10" onclick="openDept('금형1')"/>
-          <text class="zlabel" x="310" y="546">금형1</text>
-          <rect class="zone-dept" x="260" y="598" width="100" height="88" rx="10" onclick="openDept('합금1')"/>
-          <text class="zlabel" x="310" y="642">합금1</text>
+          <rect class="zone-grass" x="104" y="148" width="140" height="155" rx="10"/>
+          <!-- 원료, M/C, 금형1, 합금1, 드릴, 세라믹 -->
+          <rect class="zone-dept" x="260" y="148" width="100" height="50" rx="10" onclick="openDept('원료')"/>
+          <text class="zlabel" x="310" y="173">원료</text>
+          <rect class="zone-dept" x="260" y="203" width="100" height="44" rx="10" onclick="openDept('MC')"/>
+          <text class="zlabel" x="310" y="225">M/C</text>
+          <rect class="zone-dept" x="260" y="252" width="100" height="42" rx="10" onclick="openDept('금형1')"/>
+          <text class="zlabel" x="310" y="273">금형1</text>
+          <rect class="zone-dept" x="260" y="299" width="100" height="44" rx="10" onclick="openDept('합금1')"/>
+          <text class="zlabel" x="310" y="321">합금1</text>
           <!-- Roll -->
-          <rect class="zone-dept" x="104" y="616" width="140" height="76" rx="10" onclick="openDept('Roll')"/>
-          <text class="zlabel" x="174" y="654">Roll</text>
-          <!-- 연삭1, 코팅1 -->
-          <rect class="zone-dept" x="178" y="702" width="66" height="95" rx="10" onclick="openDept('연삭1')"/>
-          <text class="zlabel" x="211" y="749">연삭1</text>
-          <rect class="zone-dept" x="260" y="702" width="100" height="100" rx="10" onclick="openDept('드릴')"/>
-          <text class="zlabel" x="310" y="752">드릴</text>
-          <rect class="zone-dept" x="178" y="807" width="66" height="93" rx="10" onclick="openDept('코팅1')"/>
-          <text class="zlabel" x="211" y="853">코팅1</text>
-          <rect class="zone-dept" x="260" y="812" width="100" height="88" rx="10" onclick="openDept('세라믹')"/>
-          <text class="zlabel" x="310" y="856">세라믹</text>
+          <rect class="zone-dept" x="104" y="308" width="140" height="38" rx="10" onclick="openDept('Roll')"/>
+          <text class="zlabel" x="174" y="327">Roll</text>
+          <!-- 연삭1, 드릴 -->
+          <rect class="zone-dept" x="178" y="351" width="66" height="47" rx="10" onclick="openDept('연삭1')"/>
+          <text class="zlabel zlabel-sm" x="211" y="374">연삭1</text>
+          <rect class="zone-dept" x="260" y="351" width="100" height="50" rx="10" onclick="openDept('드릴')"/>
+          <text class="zlabel" x="310" y="376">드릴</text>
+          <!-- 코팅1, 세라믹 -->
+          <rect class="zone-dept" x="178" y="404" width="66" height="46" rx="10" onclick="openDept('코팅1')"/>
+          <text class="zlabel zlabel-sm" x="211" y="427">코팅1</text>
+          <rect class="zone-dept" x="260" y="406" width="100" height="44" rx="10" onclick="openDept('세라믹')"/>
+          <text class="zlabel" x="310" y="428">세라믹</text>
         </svg>
       </div>
     </div>
@@ -381,6 +382,14 @@ function openDept(deptKey) {
       '<div class="section-label">🔧 장비 선택</div>' +
       cardGrid;
 
+    // 테이블이 wrap보다 넓으면 스크롤을 중앙에서 시작
+    requestAnimationFrame(() => {
+      const wrap = body.querySelector('.layout-wrap');
+      if (wrap && wrap.scrollWidth > wrap.clientWidth) {
+        wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+      }
+    });
+
 } else {
     body.innerHTML = cardGrid;
   }
@@ -483,7 +492,7 @@ function clearSPL() {
   document.getElementById('splInput').value = '';
   renderSPL(currentParts);
 }
-
+오전 11:08 2026. 6. 25.
 /* ── 화면 전환 ── */
 function goTo(n) {
   document.getElementById('screens').className = 's' + n;
