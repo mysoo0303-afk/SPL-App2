@@ -95,13 +95,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
   border:1px solid var(--bd);background:var(--panel);
   box-shadow:0 1px 4px var(--shadow);position:relative;}
 .layout-table{border-collapse:collapse;font-size:12px;margin:0 auto;}
-.layout-table td{border:1px solid #c8d8e8;padding:6px 8px;
+.layout-table td{border:none;padding:6px 8px;
   white-space:nowrap;vertical-align:middle;text-align:center;
   min-width:64px;height:44px;}
-.layout-table td.lc{background:#dbeafe;color:#1e3a8a;font-weight:700;
-  cursor:pointer;border-color:#93c5fd;}
+.layout-table td.lc{background:#dbeafe;color:#1e3a8a;font-weight:700;cursor:pointer;}
 .layout-table td.lc:active{background:#93c5fd;}
-.layout-table td.lc.lshort{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
+.layout-table td.lc.lshort{background:#fee2e2;color:#991b1b;}
 
 /* ════ 화면3: SPL 리스트 ════ */
 .spl-search-bar{padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--bd);flex-shrink:0;}
@@ -377,32 +376,16 @@ function openDept(deptKey) {
     : '<div class="empty"><div class="icon">🔧</div><p>장비 정보 없음</p></div>';
 
   if (layData && layData.length > 0) {
-    // 배치도 + 카드 그리드 같이 표시
     body.innerHTML =
-      '<div class="section-label">📐 장비 배치도</div>' +
-      renderLayout(layData, shortByEq) +
-      '<div class="section-label">🔧 장비 선택</div>' +
-      cardGrid;
+      '<div class="section-label">📐 장비 배치도 <span style="font-size:10px;font-weight:400;opacity:.7">(핀치 확대 · 더블탭 복원)</span></div>' +
+      renderLayout(layData, shortByEq);
 
-    // 테이블이 wrap보다 넓으면 scale로 축소해서 한 화면에 맞춤
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const wrap  = body.querySelector('.layout-wrap');
       const table = wrap ? wrap.querySelector('.layout-table') : null;
-      if (!wrap || !table) return;
-      const avail = wrap.clientWidth - 16; // 8px padding 양쪽
-      if (avail <= 0) return;
-      const tw = table.scrollWidth;
-      const th = table.scrollHeight;
-      if (tw > avail) {
-        const s = avail / tw;
-        table.style.transformOrigin = 'top left';
-        table.style.transform = `scale(${s})`;
-        wrap.style.height   = (th * s + 16) + 'px';
-        wrap.style.overflow = 'hidden';
-      }
+      if (wrap && table) setupLayoutZoom(wrap, table);
     }));
-
-} else {
+  } else {
     body.innerHTML = cardGrid;
   }
 
@@ -470,6 +453,73 @@ function renderLayout(rows, shortByEq) {
   }
   html += '</tbody></table></div>';
   return html;
+}
+
+/* ── 배치도 핀치 줌 ── */
+let _lzBaseScale = 1, _lzScale = 1;
+
+function scaleCells(table, scale) {
+  const w = Math.max(22, Math.round(64 * scale));
+  const h = Math.max(18, Math.round(44 * scale));
+  const f = Math.max(8,  Math.round(12 * scale));
+  const p = Math.round(5 * scale);
+  table.querySelectorAll('td').forEach(td => {
+    td.style.minWidth  = w + 'px';
+    td.style.height    = h + 'px';
+    td.style.fontSize  = f + 'px';
+    td.style.padding   = p + 'px ' + (p+2) + 'px';
+  });
+}
+
+function setupLayoutZoom(wrap, table) {
+  // 가로/세로 모두 화면에 맞는 초기 scale 계산
+  const availW = wrap.clientWidth - 16;
+  const availH = window.innerHeight * 0.62;
+  const tw = table.scrollWidth, th = table.scrollHeight;
+  _lzBaseScale = Math.min(1, availW / tw, availH / th);
+  _lzScale     = _lzBaseScale;
+  scaleCells(table, _lzScale);
+  wrap.style.overflow  = 'auto';
+  wrap.style.maxHeight = '65vh';
+  wrap.style.height    = '';
+
+  // 이전 리스너 제거
+  if (wrap._lzStart) {
+    wrap.removeEventListener('touchstart', wrap._lzStart, {passive:false});
+    wrap.removeEventListener('touchmove',  wrap._lzMove,  {passive:false});
+    wrap.removeEventListener('touchend',   wrap._lzEnd);
+  }
+  let pDist = 0, pScaleStart = 1, lastTap = 0;
+
+  wrap._lzStart = e => {
+    if (e.touches.length === 2) {
+      pDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY);
+      pScaleStart = _lzScale;
+      e.preventDefault();
+    }
+  };
+  wrap._lzMove = e => {
+    if (e.touches.length !== 2) return;
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY);
+    _lzScale = Math.max(_lzBaseScale, Math.min(3, pScaleStart * d / pDist));
+    scaleCells(table, _lzScale);
+    e.preventDefault();
+  };
+  wrap._lzEnd = () => {
+    const now = Date.now();
+    if (now - lastTap < 280) { // 더블탭 → 원래 크기
+      _lzScale = _lzBaseScale;
+      scaleCells(table, _lzScale);
+    }
+    lastTap = now;
+  };
+  wrap.addEventListener('touchstart', wrap._lzStart, {passive:false});
+  wrap.addEventListener('touchmove',  wrap._lzMove,  {passive:false});
+  wrap.addEventListener('touchend',   wrap._lzEnd);
 }
 
 /* ── 장비 SPL 열기 ── */
