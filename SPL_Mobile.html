@@ -384,13 +384,23 @@ function openDept(deptKey) {
       '<div class="section-label">🔧 장비 선택</div>' +
       cardGrid;
 
-    // 테이블이 wrap보다 넓으면 스크롤을 중앙에서 시작
-    requestAnimationFrame(() => {
-      const wrap = body.querySelector('.layout-wrap');
-      if (wrap && wrap.scrollWidth > wrap.clientWidth) {
-        wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+    // 테이블이 wrap보다 넓으면 scale로 축소해서 한 화면에 맞춤
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const wrap  = body.querySelector('.layout-wrap');
+      const table = wrap ? wrap.querySelector('.layout-table') : null;
+      if (!wrap || !table) return;
+      const avail = wrap.clientWidth - 16; // 8px padding 양쪽
+      if (avail <= 0) return;
+      const tw = table.scrollWidth;
+      const th = table.scrollHeight;
+      if (tw > avail) {
+        const s = avail / tw;
+        table.style.transformOrigin = 'top left';
+        table.style.transform = `scale(${s})`;
+        wrap.style.height   = (th * s + 16) + 'px';
+        wrap.style.overflow = 'hidden';
       }
-    });
+    }));
 
 } else {
     body.innerHTML = cardGrid;
