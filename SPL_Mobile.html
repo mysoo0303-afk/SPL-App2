@@ -68,12 +68,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .zlabel-sm{font-size:11px;}
 .map-bg{fill:#f1f5f9;}
 
-.home-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 16px;}
-.stat-card{background:var(--panel);border-radius:10px;border:1px solid var(--bd);
-  padding:12px 14px;box-shadow:0 1px 3px var(--shadow);}
-.stat-val{font-size:22px;font-weight:800;color:var(--primary);line-height:1;}
-.stat-val.warn{color:#c05621;}.stat-val.danger{color:#c53030;}.stat-val.ok{color:#276749;}
-.stat-lbl{font-size:10px;color:var(--sub);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
 
 /* ════ 화면2: 부서 장비 그리드 / 배치도 ════ */
 .dept-info{padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--bd);
@@ -99,11 +93,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .layout-wrap{overflow:auto;-webkit-overflow-scrolling:touch;
   padding:8px;margin:0 8px 8px;border-radius:12px;
   border:1px solid var(--bd);background:var(--panel);
-  box-shadow:0 1px 4px var(--shadow);}
-.layout-table{border-collapse:collapse;font-size:11px;}
-.layout-table td{border:1px solid #c8d8e8;padding:3px 5px;
+  box-shadow:0 1px 4px var(--shadow);position:relative;}
+.layout-table{border-collapse:collapse;font-size:12px;}
+.layout-table td{border:1px solid #c8d8e8;padding:6px 8px;
   white-space:nowrap;vertical-align:middle;text-align:center;
-  min-width:28px;height:28px;}
+  min-width:64px;height:44px;}
 .layout-table td.lc{background:#dbeafe;color:#1e3a8a;font-weight:700;
   cursor:pointer;border-color:#93c5fd;}
 .layout-table td.lc:active{background:#93c5fd;}
@@ -118,20 +112,20 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .spl-clear{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;padding:0;}
 .spl-meta{font-size:11px;color:var(--sub);padding:4px 12px 0;flex-shrink:0;}
 
-.spl-item{background:var(--panel);margin:6px 10px;border-radius:12px;
-  border:1px solid var(--bd);overflow:hidden;box-shadow:0 1px 3px var(--shadow);}
-.spl-item.short{border-color:#fca5a5;}
-.spl-item-head{padding:10px 12px 6px;display:flex;justify-content:space-between;align-items:flex-start;}
-.spl-itemno{font-family:'Consolas',monospace;font-size:12px;font-weight:700;color:var(--primary);}
-.spl-type{font-size:10px;font-weight:700;background:#dbeafe;color:#1e3a8a;
-  padding:2px 7px;border-radius:10px;flex-shrink:0;margin-left:6px;}
-.spl-model{padding:2px 12px 6px;font-size:13px;font-weight:600;color:var(--text);}
-.spl-desc{padding:0 12px 8px;font-size:11px;color:var(--sub);}
-.spl-foot{display:flex;border-top:1px solid var(--bd);}
-.spl-stock-box{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--bd);}
-.spl-stock-box:last-child{border-right:none;}
-.spl-stock-lbl{font-size:10px;color:var(--sub);display:block;}
-.spl-stock-val{font-size:16px;font-weight:800;display:block;margin-top:2px;}
+/* ── SPL 리스트 (compact) ── */
+.spl-list-wrap{background:var(--panel);margin:8px 10px 16px;
+  border-radius:12px;border:1px solid var(--bd);overflow:hidden;
+  box-shadow:0 1px 3px var(--shadow);}
+.spl-item{padding:10px 14px;border-bottom:1px solid var(--bd);display:flex;
+  flex-direction:column;gap:3px;}
+.spl-item:last-child{border-bottom:none;}
+.spl-item.short{border-left:3px solid var(--warn);}
+.spl-main-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.spl-itemno{font-family:'Consolas',monospace;font-size:13px;font-weight:700;
+  color:var(--primary);flex-shrink:0;}
+.spl-stk{font-size:17px;font-weight:800;flex-shrink:0;min-width:32px;text-align:right;}
+.spl-desc{font-size:11px;color:var(--sub);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;}
 .stock-ok{color:var(--ok);}.stock-warn{color:var(--warn);}
 
 .list-end{text-align:center;color:var(--sub);font-size:12px;padding:20px;margin-bottom:40px;}
@@ -202,7 +196,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
           <text class="zlabel" x="145" y="321">가공</text>
         </svg>
       </div>
-      <div class="home-stats" id="homeStats"></div>
     </div>
   </div>
 
@@ -299,7 +292,6 @@ async function loadData() {
       });
     }
 
-    buildHomeStats();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
   } catch(e) {
@@ -310,22 +302,6 @@ async function loadData() {
   }
 }
 
-/* ── 홈 통계 ── */
-function buildHomeStats() {
-  const total = allParts.length;
-  const eqs = new Set(allParts.map(p => p.eq)).size;
-  const short = allParts.filter(p => p.stock <= p.safety && p.safety > 0).length;
-  const zero = allParts.filter(p => p.stock === 0).length;
-  document.getElementById('homeStats').innerHTML = [
-    ['전체 파트', total.toLocaleString(), ''],
-    ['장비 수', eqs, ''],
-    ['재고 0', zero.toLocaleString(), 'warn'],
-    ['청구 필요', short, 'danger'],
-  ].map(([l,v,c]) => `<div class="stat-card">
-    <div class="stat-val ${c}">${v}</div>
-    <div class="stat-lbl">${l}</div>
-  </div>`).join('');
-}
 
 /* ── 부서 열기 ── */
 function openDept(deptKey) {
@@ -383,6 +359,26 @@ function openDept(deptKey) {
       renderLayout(layData, shortByEq) +
       '<div class="section-label">🔧 장비 선택</div>' +
       cardGrid;
+
+    // 배치도 90° CW 회전 (가로→세로, 모바일 portrait에 맞게)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const table = body.querySelector('.layout-table');
+        const wrap  = body.querySelector('.layout-wrap');
+        if (!table || !wrap) return;
+        const W = table.scrollWidth;   // 원래 가로폭 → 회전 후 세로
+        const H = table.scrollHeight;  // 원래 세로폭 → 회전 후 가로
+        if (!W || !H) return;
+        // CW 90°: transform-origin 좌상단 기준
+        // translateX(H) rotate(90deg) → 화면 내 x:[0,H], y:[0,W]
+        table.style.transformOrigin = 'left top';
+        table.style.transform = `translateX(${H}px) rotate(90deg)`;
+        wrap.style.height = W + 'px';
+        // 회전 후 가로(H)가 화면폭 초과 시 가로스크롤
+        wrap.style.minWidth = H + 'px';
+        wrap.style.overflow = 'auto';
+      });
+    });
   } else {
     body.innerHTML = cardGrid;
   }
@@ -451,29 +447,22 @@ function renderSPL(parts) {
   }
 
   const show = parts.slice(0, 300);
-  el.innerHTML = show.map(p => {
-    const isLow = p.stock <= p.safety && p.safety > 0;
-    const sc = isLow ? 'stock-warn' : 'stock-ok';
-    const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
-    return `<div class="spl-item${isLow ? ' short' : ''}">
-      <div class="spl-item-head">
-        <span class="spl-itemno">${esc(p.itemNo)}</span>
-        ${p.type ? `<span class="spl-type">${esc(p.type)}</span>` : ''}
-      </div>
-      ${p.model ? `<div class="spl-model">${esc(p.model)}</div>` : ''}
-      ${desc ? `<div class="spl-desc">${esc(desc)}</div>` : ''}
-      <div class="spl-foot">
-        <div class="spl-stock-box">
-          <span class="spl-stock-lbl">재고</span>
-          <span class="spl-stock-val ${sc}">${p.stock}</span>
+  el.innerHTML =
+    '<div class="spl-list-wrap">' +
+    show.map(p => {
+      const isLow = p.stock <= p.safety && p.safety > 0;
+      const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
+      const stk = p.stock != null ? p.stock : '-';
+      return `<div class="spl-item${isLow ? ' short' : ''}">
+        <div class="spl-main-row">
+          <span class="spl-itemno">${esc(p.itemNo)}</span>
+          <span class="spl-stk ${isLow ? 'stock-warn' : 'stock-ok'}">${stk}</span>
         </div>
-        <div class="spl-stock-box">
-          <span class="spl-stock-lbl">안전재고</span>
-          <span class="spl-stock-val">${p.safety}</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('') + (parts.length > 300 ? `<div class="list-end">300개 표시 중 (전체 ${parts.length}개)</div>` : '<div class="list-end">— 끝 —</div>');
+        ${desc ? `<div class="spl-desc">${esc(desc)}</div>` : ''}
+      </div>`;
+    }).join('') +
+    '</div>' +
+    (parts.length > 300 ? `<div class="list-end">300개 표시 중 (전체 ${parts.length}개)</div>` : '<div class="list-end">— 끝 —</div>');
 }
 
 /* ── SPL 검색 ── */
@@ -500,9 +489,9 @@ function goTo(n) {
   if (n === 2) document.getElementById('splList').scrollTop = 0;
 }
 function goBack(from) {
-  goTo(from - 1);
+  goTo(from - 1);오전 10:44 2026. 6. 25.
 }
-
+오전 10:44 2026. 6. 25.
 /* ── 이스케이프 ── */
 function esc(s) {
   if (!s) return '';
