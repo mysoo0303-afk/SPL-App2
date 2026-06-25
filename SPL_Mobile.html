@@ -246,11 +246,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 </div><!-- /app -->
 
 <script>
-const DATA_URL = 'https://script.google.com/macros/s/AKfycbxQZBdwuixL1z6FRrfBenJzDEd-NJKHLzUwCt8inQYcwweqo_76JPVE9XcRYQeD3GT3/exec';
+const DATA_URL = 'https://raw.githubusercontent.com/mysoo0303-afk/SPL-App2/main/spl_data.json';
+const STOCK_URL = 'https://docs.google.com/spreadsheets/d/1tAelq8-WQClT2f9U4fsUwxlTLn0sW6e39CCFkZu3YPY/export?format=csv&gid=1876732220';
 
 let allParts = [];
 let depts = {};
 let layouts = {};
+let stockMap = {};
 let currentDept = '';
 let currentEq = '';
 let currentParts = [];
@@ -258,13 +260,36 @@ let currentParts = [];
 /* ── 데이터 로드 ── */
 async function loadData() {
   try {
-    const r = await fetch(DATA_URL + '?t=' + Date.now());
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
+    const t = '?t=' + Date.now();
+    const [r1, r2] = await Promise.all([
+      fetch(DATA_URL + t),
+      fetch(STOCK_URL + '&t=' + Date.now()).catch(() => null)
+    ]);
+
+    if (!r1.ok) throw new Error('HTTP ' + r1.status);
+    const data = await r1.json();
     allParts = data.parts || [];
     depts = data.depts || {};
     layouts = data.layouts || {};
     document.getElementById('updateBadge').textContent = data.updated || '';
+
+    // 구글시트 재고 파싱
+    if (r2 && r2.ok) {
+      const csv = await r2.text();
+      csv.split('\n').slice(1).forEach(line => {
+        const cols = line.split(',');
+        if (cols.length >= 2) {
+          const itemNo = cols[0].trim().replace(/^"|"$/g, '');
+          const stock = parseInt(cols[1].trim().replace(/^"|"$/g, ''), 10);
+          if (itemNo && !isNaN(stock)) stockMap[itemNo] = stock;
+        }
+      });
+      // 재고 덮어쓰기
+      allParts.forEach(p => {
+        if (stockMap.hasOwnProperty(p.itemNo)) p.stock = stockMap[p.itemNo];
+      });
+    }
+
     buildHomeStats();
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
