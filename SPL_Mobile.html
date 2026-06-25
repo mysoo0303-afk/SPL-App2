@@ -75,6 +75,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .dept-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;
   background:#dbeafe;color:#1e3a8a;}
 .dept-badge.warn{background:#fef2f2;color:#c53030;}
+/* 부서 내부 탭 */
+.dept-tabs{display:flex;background:var(--panel);border-bottom:2px solid var(--bd);flex-shrink:0;}
+.dept-tab-btn{flex:1;padding:10px 8px;font-size:13px;font-weight:600;border:none;
+  background:none;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:color .15s,border-color .15s;}
+.dept-tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
 /* 카드 그리드 (fallback) */
 .eq-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:12px;}
 .eq-card{background:var(--panel);border-radius:12px;border:1px solid var(--bd);
@@ -256,6 +262,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
       <span id="deptTotalBadge" class="dept-badge"></span>
       <span id="deptShortBadge" class="dept-badge warn" style="display:none"></span>
     </div>
+    <div class="dept-tabs" id="deptTabs" style="display:none">
+      <button class="dept-tab-btn active" onclick="switchDeptTab(0)">📐 배치도</button>
+      <button class="dept-tab-btn" onclick="switchDeptTab(1)">🔧 장비 리스트</button>
+    </div>
     <div class="scroll-body" id="deptBody"></div>
   </div>
 
@@ -323,6 +333,9 @@ let currentDept = '';
 let currentEq = '';
 let currentParts = [];
 let activeTab = 0;
+let _deptLayoutHtml = '';  // 현재 부서 배치도 HTML 캐시
+let _deptListHtml = '';    // 현재 부서 장비리스트 HTML 캐시
+let _deptShortByEq = {};   // setupLayoutZoom 재호출용
 
 /* ── 데이터 로드 ──
    fetchWithTimeout은 헤더만 커버 → 본문(.json/.text) 중 끊기면 무한대기.
@@ -431,8 +444,8 @@ function openDept(deptKey, noNav = false) {
   const body = document.getElementById('deptBody');
   const layData = layouts[deptKey];
 
-  // 카드 그리드 HTML (항상 만들어 놓음)
-  const cardGrid = equips.length > 0
+  // 장비 리스트 HTML (항상 빌드)
+  _deptListHtml = equips.length > 0
     ? '<div class="eq-grid">' + equips.map(eq => {
         const sc = shortByEq[eq] || 0;
         const cnt = cntByEq[eq] || 0;
@@ -446,21 +459,52 @@ function openDept(deptKey, noNav = false) {
       }).join('') + '</div>'
     : '<div class="empty"><div class="icon">🔧</div><p>장비 정보 없음</p></div>';
 
+  _deptShortByEq = shortByEq;
+  const deptTabsEl = document.getElementById('deptTabs');
+
   if (layData && layData.length > 0) {
-    body.innerHTML =
-      '<div class="section-label">📐 장비 배치도 <span style="font-size:10px;font-weight:400;opacity:.7">(핀치 확대 · 더블탭 복원)</span></div>' +
+    // 배치도 있음: 탭 표시, 배치도를 기본 탭으로
+    _deptLayoutHtml =
+      '<div class="section-label">📐 장비 배치도 ' +
+      '<span style="font-size:10px;font-weight:400;opacity:.7">(핀치 확대 · 더블탭 복원)</span></div>' +
       renderLayout(layData, shortByEq);
 
+    deptTabsEl.style.display = 'flex';
+    // 배치도 탭 active 리셋
+    deptTabsEl.querySelectorAll('.dept-tab-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+
+    body.innerHTML = _deptLayoutHtml;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const wrap  = body.querySelector('.layout-wrap');
       const table = wrap ? wrap.querySelector('.layout-table') : null;
       if (wrap && table) setupLayoutZoom(wrap, table);
     }));
   } else {
-    body.innerHTML = cardGrid;
+    // 배치도 없음: 탭 숨기고 장비 리스트만
+    _deptLayoutHtml = '';
+    deptTabsEl.style.display = 'none';
+    body.innerHTML = _deptListHtml;
   }
 
   if (!noNav) goTo(1);
+}
+
+/* ── 부서 내 탭 전환 (배치도 ↔ 장비리스트) ── */
+function switchDeptTab(n) {
+  document.getElementById('deptTabs').querySelectorAll('.dept-tab-btn')
+    .forEach((b, i) => b.classList.toggle('active', i === n));
+  const body = document.getElementById('deptBody');
+  if (n === 0) {
+    body.innerHTML = _deptLayoutHtml;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const wrap  = body.querySelector('.layout-wrap');
+      const table = wrap ? wrap.querySelector('.layout-table') : null;
+      if (wrap && table) setupLayoutZoom(wrap, table);
+    }));
+  } else {
+    body.innerHTML = _deptListHtml;
+  }
+  body.scrollTop = 0;
 }
 
 /* ── 배치도 테이블 렌더링 ──
