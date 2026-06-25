@@ -27,14 +27,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* ── 화면 슬라이드 ── */
-#app{position:fixed;inset:0;display:flex;overflow:hidden;}
-.screen{min-width:100%;height:100%;display:flex;flex-direction:column;
-  transition:transform .3s ease;background:var(--bg);}
-#screens{display:flex;width:300%;height:100%;
+#app{position:fixed;inset:0;overflow:hidden;}
+.screen{width:100vw;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:var(--bg);}
+#screens{display:flex;width:300vw;height:100%;
   transition:transform .3s ease;}
 #screens.s0{transform:translateX(0);}
-#screens.s1{transform:translateX(-33.333%);}
-#screens.s2{transform:translateX(-66.666%);}
+#screens.s1{transform:translateX(-100vw);}
+#screens.s2{transform:translateX(-200vw);}
 
 /* ── 공통 헤더 ── */
 .hdr{background:var(--primary);color:#fff;padding:14px 16px 12px;
@@ -95,8 +94,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .eq-short-badge{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;
   background:var(--warn-bg);color:var(--warn);padding:2px 7px;border-radius:10px;}
 /* 배치도 테이블 */
+.section-label{font-size:11px;font-weight:700;color:var(--sub);
+  padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.5px;}
 .layout-wrap{overflow:auto;-webkit-overflow-scrolling:touch;
-  padding:8px;margin:8px;border-radius:12px;
+  padding:8px;margin:0 8px 8px;border-radius:12px;
   border:1px solid var(--bd);background:var(--panel);
   box-shadow:0 1px 4px var(--shadow);}
 .layout-table{border-collapse:collapse;font-size:11px;}
@@ -351,24 +352,30 @@ function openDept(deptKey) {
   const body = document.getElementById('deptBody');
   const layData = layouts[deptKey];
 
+  // 카드 그리드 HTML (항상 만들어 놓음)
+  const cardGrid = equips.length > 0
+    ? '<div class="eq-grid">' + equips.map(eq => {
+        const sc = shortByEq[eq] || 0;
+        const cnt = cntByEq[eq] || 0;
+        return `<div class="eq-card${sc > 0 ? ' short' : ''}" onclick="openEquip('${eq.replace(/'/g,"\\'")}')">
+          <div>
+            <div class="eq-name">${esc(eq)}</div>
+            <div class="eq-cnt">파트 ${cnt}개</div>
+          </div>
+          ${sc > 0 ? `<span class="eq-short-badge">⚠️ ${sc}건 부족</span>` : ''}
+        </div>`;
+      }).join('') + '</div>'
+    : '<div class="empty"><div class="icon">🔧</div><p>장비 정보 없음</p></div>';
+
   if (layData && layData.length > 0) {
-    // 배치도 테이블 렌더링
-    body.innerHTML = renderLayout(layData, shortByEq);
-  } else if (equips.length === 0) {
-    body.innerHTML = '<div class="empty"><div class="icon">🔧</div><p>장비 정보 없음<br><small>매크로를 다시 실행해주세요</small></p></div>';
+    // 배치도 + 카드 그리드 같이 표시
+    body.innerHTML =
+      '<div class="section-label">📐 장비 배치도</div>' +
+      renderLayout(layData, shortByEq) +
+      '<div class="section-label">🔧 장비 선택</div>' +
+      cardGrid;
   } else {
-    // fallback: 카드 그리드
-    body.innerHTML = '<div class="eq-grid">' + equips.map(eq => {
-      const sc = shortByEq[eq] || 0;
-      const cnt = cntByEq[eq] || 0;
-      return `<div class="eq-card${sc > 0 ? ' short' : ''}" onclick="openEquip('${eq.replace(/'/g,"\\'")}')">
-        <div>
-          <div class="eq-name">${esc(eq)}</div>
-          <div class="eq-cnt">파트 ${cnt}개</div>
-        </div>
-        ${sc > 0 ? `<span class="eq-short-badge">⚠️ ${sc}건 부족</span>` : ''}
-      </div>`;
-    }).join('') + '</div>';
+    body.innerHTML = cardGrid;
   }
 
   goTo(1);
@@ -474,7 +481,7 @@ function filterSPL() {
 function clearSPL() {
   document.getElementById('splInput').value = '';
   renderSPL(currentParts);
-}
+}오전 10:19 2026. 6. 25.
 
 /* ── 화면 전환 ── */
 function goTo(n) {
