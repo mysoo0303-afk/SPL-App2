@@ -117,6 +117,25 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .spl-clear{background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;padding:0;}
 .spl-meta{font-size:11px;color:var(--sub);padding:4px 12px 0;flex-shrink:0;}
 
+/* ── SPL 2단 레이아웃 ── */
+.spl-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.part-tree{width:108px;flex-shrink:0;overflow-y:auto;background:var(--panel);
+  border-right:1px solid var(--bd);-webkit-overflow-scrolling:touch;}
+.tree-all{display:block;width:100%;text-align:left;padding:10px 10px;
+  font-size:12px;font-weight:700;color:var(--primary);background:none;
+  border:none;border-bottom:1px solid var(--bd);cursor:pointer;}
+.tree-all.active{background:var(--primary);color:#fff;}
+.tree-type-hdr{padding:8px 8px 4px;font-size:10px;font-weight:800;
+  color:var(--muted);letter-spacing:.5px;text-transform:uppercase;
+  border-top:1px solid var(--bd);user-select:none;}
+.tree-type-hdr:first-of-type{border-top:none;}
+.tree-part-btn{display:block;width:100%;text-align:left;padding:7px 8px 7px 12px;
+  font-size:11.5px;color:var(--text);background:none;border:none;
+  border-bottom:1px solid rgba(0,0,0,.04);cursor:pointer;line-height:1.3;
+  white-space:normal;word-break:break-word;}
+.tree-part-btn.active{background:var(--primary);color:#fff;font-weight:700;}
+.spl-right{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
 /* ── SPL 리스트 (compact) ── */
 .spl-list-wrap{background:var(--panel);margin:8px 10px 16px;
   border-radius:12px;border:1px solid var(--bd);overflow:hidden;
@@ -316,8 +335,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
         <button class="spl-clear" onclick="clearSPL()">×</button>
       </div>
     </div>
-    <div class="spl-meta" id="splMeta"></div>
-    <div class="scroll-body" id="splList"></div>
+    <div class="spl-body">
+      <div class="part-tree" id="partTree"></div>
+      <div class="spl-right">
+        <div class="spl-meta" id="splMeta"></div>
+        <div class="scroll-body" id="splList"></div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /screens -->
@@ -791,6 +815,8 @@ function sharePrefix(a, b, minLen) {
 }
 
 /* ── 장비 SPL 열기 ── */
+let _activeTreeKey = null; // "전체" or "type::part"
+
 function openEquip(eqName) {
   currentEq = eqName;
   currentParts = allParts.filter(p => p.eq === eqName);
@@ -801,8 +827,54 @@ function openEquip(eqName) {
     currentParts.length + '개' + (short > 0 ? ' · ⚠️' + short : '');
 
   document.getElementById('splInput').value = '';
+  _activeTreeKey = null;
+  buildPartTree(currentParts);
   renderSPL(currentParts);
   goTo(2);
+}
+
+function buildPartTree(parts) {
+  // type → Set of part values
+  const tree = {};
+  parts.forEach(p => {
+    const t = p.type || '기타';
+    const pt = p.part || '기타';
+    if (!tree[t]) tree[t] = new Set();
+    tree[t].add(pt);
+  });
+
+  let html = `<button class="tree-all active" id="tree-all-btn" onclick="filterByPart(null,null)">전체 (${parts.length})</button>`;
+
+  Object.keys(tree).sort().forEach(type => {
+    html += `<div class="tree-type-hdr">${esc(type)}</div>`;
+    [...tree[type]].sort().forEach(part => {
+      const cnt = parts.filter(p => (p.type||'기타') === type && (p.part||'기타') === part).length;
+      const key = type + '::' + part;
+      const safe = key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      html += `<button class="tree-part-btn" data-key="${esc(key)}"
+        onclick="filterByPart('${esc(type).replace(/'/g,"\\'")}','${esc(part).replace(/'/g,"\\'")}')">
+        ${esc(part)}<br><span style="font-size:10px;opacity:.6">${cnt}개</span></button>`;
+    });
+  });
+
+  document.getElementById('partTree').innerHTML = html;
+}
+
+function filterByPart(type, part) {
+  document.getElementById('splInput').value = '';
+  _activeTreeKey = type ? (type + '::' + part) : null;
+
+  // 버튼 active 상태
+  document.querySelectorAll('.tree-part-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.key === _activeTreeKey);
+  });
+  const allBtn = document.getElementById('tree-all-btn');
+  if (allBtn) allBtn.classList.toggle('active', !_activeTreeKey);
+
+  const filtered = _activeTreeKey
+    ? currentParts.filter(p => (p.type||'기타') === type && (p.part||'기타') === part)
+    : currentParts;
+  renderSPL(filtered);
 }
 
 /* ── SPL 렌더링 ── */
@@ -838,17 +910,22 @@ function renderSPL(parts) {
 /* ── SPL 검색 ── */
 function filterSPL() {
   const q = document.getElementById('splInput').value.trim().toLowerCase();
-  if (!q) { renderSPL(currentParts); return; }
+  const base = _activeTreeKey
+    ? currentParts.filter(p => {
+        const [t, pt] = _activeTreeKey.split('::');
+        return (p.type||'기타') === t && (p.part||'기타') === pt;
+      })
+    : currentParts;
+  if (!q) { renderSPL(base); return; }
   const terms = q.split(/\s+/).filter(Boolean);
-  const filtered = currentParts.filter(p => {
+  renderSPL(base.filter(p => {
     const hay = [p.itemNo, p.type, p.part, p.model, p.desc1, p.desc2].join(' ').toLowerCase();
     return terms.every(t => hay.includes(t));
-  });
-  renderSPL(filtered);
+  }));
 }
 function clearSPL() {
   document.getElementById('splInput').value = '';
-  renderSPL(currentParts);
+  filterSPL();
 }
 
 /* ── 탭 전환 ── */
