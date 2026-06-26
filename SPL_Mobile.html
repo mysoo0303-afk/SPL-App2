@@ -19,6 +19,35 @@
   --ok:#16a34a; --warn:#dc2626; --warn-bg:#fef2f2; --ok-bg:#f0fdf4;
   --shadow:rgba(0,0,0,0.07);
 }
+body.dark {
+  --bg:#0f172a; --panel:#1e293b; --primary:#1e3a6e; --accent:#2563eb;
+  --blue:#60a5fa; --text:#e2e8f0; --sub:#94a3b8; --bd:#334155;
+  --zone:#1e3a5f; --zone-h:#2a4e78; --zone-s:#1a3555;
+  --grass:#14532d; --grass-s:#166534;
+  --ok:#4ade80; --warn:#f87171; --warn-bg:#3f1515; --ok-bg:#052e16;
+  --shadow:rgba(0,0,0,0.35);
+}
+body.dark .hdr{background:#0f172a;}
+body.dark #loadingScreen{background:#0f172a;}
+body.dark .popup-stk-chip.ok{background:#052e16;color:#4ade80;}
+body.dark .popup-stk-chip.warn{background:#3f1515;color:#fca5a5;}
+body.dark .dept-badge{background:#1e3a6e;color:#93c5fd;}
+body.dark .eq-card.short{background:#2a1515;border-color:#f87171;}
+body.dark .tab-bar-inner,.dark #tab-bar{background:#0f172a;border-color:#1e293b;}
+body.dark .tab-btn{color:#94a3b8;}
+body.dark .tab-btn.active{color:#60a5fa;}
+body.dark .gsearch-hdr{background:#0f172a;}
+body.dark .spl-search-bar{background:#0f172a;}
+body.dark .ginput,.dark .spl-input{background:#1e293b;color:#e2e8f0;border-color:#334155;}
+body.dark #g-search{background:#0f172a;}
+body.dark .zlabel{fill:#93c5fd;}
+body.dark .map-bg{fill:#1e293b;}
+body.dark .zone-dept{fill:#1e3a5f;stroke:#2a4e78;}
+body.dark .zone-grass{fill:#14532d;stroke:#166534;}
+/* 다크모드 토글 버튼 */
+#dark-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;
+  width:32px;height:32px;border-radius:8px;font-size:17px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
   background:var(--bg);color:var(--text);overflow:hidden;}
@@ -268,6 +297,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
         <div class="hdr-title">🏭 TaeguTec SPL 조회</div>
       </div>
       <span class="update-badge" id="updateBadge">—</span>
+      <button id="dark-toggle" onclick="toggleDark()" title="다크모드">🌙</button>
     </div>
     <div class="scroll-body">
       <div id="map-wrap">
@@ -415,6 +445,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 
 <script>
 const DATA_URL = 'https://script.google.com/macros/s/AKfycbyh7F0PM2x25DyAFLL1MAINJ3Sbn6RxWHzUFDqwaCwIzqxPMfLyyowytXl-2_ArPfMO/exec';
+
+// ── 다크모드 ──────────────────────────────────────
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('spl-dark', isDark ? '1' : '0');
+  document.getElementById('dark-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+(function initDark() {
+  const saved = localStorage.getItem('spl-dark');
+  const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (saved === '1' || (saved === null && preferDark)) {
+    document.body.classList.add('dark');
+    const btn = document.getElementById('dark-toggle');
+    if (btn) btn.textContent = '☀️';
+  }
+})();
 const STOCK_URL = 'https://docs.google.com/spreadsheets/d/1tAelq8-WQClT2f9U4fsUwxlTLn0sW6e39CCFkZu3YPY/export?format=csv&gid=1876732220';
 
 let allParts = [];
