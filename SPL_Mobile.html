@@ -492,30 +492,52 @@ async function loadData() {
     if (el) el.textContent = t;
   };
 
-  // ① SPL JSON (GitHub) — 20초 마스터 타임아웃
-  const splCtrl = new AbortController();
-  const splTimer = setTimeout(() => splCtrl.abort(), 20000);
-  try {
-    setMsg('SPL 데이터 로딩 중...');
-    const r1 = await fetch(DATA_URL + '?t=' + Date.now(), {signal: splCtrl.signal});
-    if (!r1.ok) throw new Error('SPL 데이터 로드 실패 (GitHub ' + r1.status + ')');
-    setMsg('데이터 파싱 중...');
-    const data = await r1.json();          // ← signal이 살아있어 여기서도 abort 가능
-    clearTimeout(splTimer);
-    allParts    = data.parts || [];
-    depts       = data.depts  || {};
-    layouts     = data.layouts || {};
-    equipLists  = data.equipLists || {};
+  // ── 캐시 적용 헬퍼 ──────────────────────────────
+  function applyData(data) {
+    allParts   = data.parts      || [];
+    depts      = data.depts      || {};
+    layouts    = data.layouts    || {};
+    equipLists = data.equipLists || {};
     document.getElementById('updateBadge').textContent = data.updated || '';
-    // eq → dept 역방향 맵 구성
     eqToDept = {};
     Object.entries(depts).forEach(([dept, eqs]) => {
       eqs.forEach(eq => { eqToDept[eq] = dept; });
     });
+  }
+
+  // ① SPL JSON — 캐시 우선, 백그라운드 갱신
+  const CACHE_KEY = 'spl-data-v1';
+  const cached = localStorage.getItem(CACHE_KEY);
+
+  if (cached) {
+    // 캐시 있으면 즉시 표시
+    try {
+      applyData(JSON.parse(cached));
+      setMsg('캐시 데이터 표시 중...');
+    } catch(_) {}
+  }
+
+  // 네트워크에서 최신 데이터 fetch (캐시 있으면 백그라운드, 없으면 필수)
+  const splCtrl = new AbortController();
+  const splTimer = setTimeout(() => splCtrl.abort(), 20000);
+  try {
+    if (!cached) setMsg('SPL 데이터 로딩 중...');
+    const r1 = await fetch(DATA_URL + '?t=' + Date.now(), {signal: splCtrl.signal});
+    if (!r1.ok) throw new Error('SPL 데이터 로드 실패 (' + r1.status + ')');
+    if (!cached) setMsg('데이터 파싱 중...');
+    const data = await r1.json();
+    clearTimeout(splTimer);
+    applyData(data);
+    // 최신 데이터 캐시 저장
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(_) {}
   } catch(e) {
     clearTimeout(splTimer);
-    showErr(splCtrl.signal.aborted ? 'GitHub 로딩 시간 초과 (20초)' : e.message);
-    return;
+    if (!cached) {
+      // 캐시도 없고 네트워크도 실패 → 에러
+      showErr(splCtrl.signal.aborted ? '로딩 시간 초과 (20초)' : e.message);
+      return;
+    }
+    // 캐시 있으면 그냥 계속 (백그라운드 갱신 실패는 무시)
   }
 
   // ② 구글시트 재고 — 8초 타임아웃, 실패해도 앱 계속 실행
@@ -1070,6 +1092,8 @@ function switchTab(n) {
     setTimeout(() => document.getElementById('gInput').focus(), 100);
   } else {
     gs.classList.remove('active');
+    // 홈 탭 → 화면 0(배치도)으로 복귀
+    goTo(0);
   }
 }
 
