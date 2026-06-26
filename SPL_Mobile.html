@@ -53,6 +53,28 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .update-badge{font-size:10px;background:rgba(255,255,255,.18);
   border-radius:20px;padding:2px 8px;white-space:nowrap;}
 
+/* ── 파트 상세 팝업 ── */
+#part-popup{position:fixed;inset:0;z-index:200;display:none;align-items:flex-end;}
+#part-popup.open{display:flex;}
+#part-popup-bg{position:absolute;inset:0;background:rgba(0,0,0,.45);}
+#part-popup-sheet{position:relative;width:100%;max-height:80vh;overflow-y:auto;
+  background:var(--panel);border-radius:20px 20px 0 0;padding:0 0 env(safe-area-inset-bottom);
+  box-shadow:0 -4px 24px rgba(0,0,0,.18);}
+.popup-handle{width:36px;height:4px;background:var(--bd);border-radius:2px;
+  margin:12px auto 0;}
+.popup-hdr{padding:16px 20px 12px;border-bottom:1px solid var(--bd);}
+.popup-itemno{font-size:20px;font-weight:800;color:var(--primary);}
+.popup-stk-row{display:flex;gap:10px;margin-top:6px;}
+.popup-stk-chip{padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;}
+.popup-stk-chip.ok{background:#dcfce7;color:#166534;}
+.popup-stk-chip.warn{background:#fef9c3;color:#713f12;}
+.popup-rows{padding:12px 20px 20px;display:flex;flex-direction:column;gap:0;}
+.popup-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd);}
+.popup-row:last-child{border-bottom:none;}
+.popup-label{font-size:11px;font-weight:700;color:var(--muted);width:72px;flex-shrink:0;
+  letter-spacing:.4px;text-transform:uppercase;padding-top:1px;}
+.popup-val{font-size:14px;color:var(--text);flex:1;word-break:break-word;}
+
 /* ── 스크롤 영역 ── */
 .scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
 .scroll-body::-webkit-scrollbar{display:none;}
@@ -346,6 +368,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
   </div>
 
 </div><!-- /screens -->
+
+  <!-- ════ 파트 상세 팝업 ════ -->
+  <div id="part-popup">
+    <div id="part-popup-bg" onclick="closePartPopup()"></div>
+    <div id="part-popup-sheet">
+      <div class="popup-handle"></div>
+      <div class="popup-hdr">
+        <div class="popup-itemno" id="pp-itemno"></div>
+        <div class="popup-stk-row">
+          <span class="popup-stk-chip" id="pp-stk"></span>
+          <span class="popup-stk-chip" id="pp-safe"></span>
+        </div>
+      </div>
+      <div class="popup-rows" id="pp-rows"></div>
+    </div>
+  </div>
 
   <!-- ════ 전역 검색 화면 ════ -->
   <div id="g-search">
@@ -901,11 +939,11 @@ function renderSPL(parts) {
   const show = parts.slice(0, 300);
   el.innerHTML =
     '<div class="spl-list-wrap">' +
-    show.map(p => {
+    show.map((p, i) => {
       const isLow = p.stock <= p.safety && p.safety > 0;
       const desc = [p.part, p.desc1, p.desc2].filter(Boolean).join(' · ');
       const stk = p.stock != null ? p.stock : '-';
-      return `<div class="spl-item${isLow ? ' short' : ''}">
+      return `<div class="spl-item${isLow ? ' short' : ''}" style="cursor:pointer" data-pidx="${i}">
         <div class="spl-main-row">
           <span class="spl-itemno">${esc(p.itemNo)}</span>
           <span class="spl-stk ${isLow ? 'stock-warn' : 'stock-ok'}">${stk}</span>
@@ -916,6 +954,43 @@ function renderSPL(parts) {
     }).join('') +
     '</div>' +
     (parts.length > 300 ? `<div class="list-end">300개 표시 중 (전체 ${parts.length}개)</div>` : '<div class="list-end">— 끝 —</div>');
+
+  // 클릭 → 팝업
+  el.querySelectorAll('.spl-item').forEach((el, i) => {
+    el.addEventListener('click', () => openPartPopup(show[i]));
+  });
+}
+
+/* ── 파트 상세 팝업 ── */
+function openPartPopup(p) {
+  const isLow = p.stock <= p.safety && p.safety > 0;
+  document.getElementById('pp-itemno').textContent = p.itemNo;
+
+  const stkEl = document.getElementById('pp-stk');
+  stkEl.textContent = '재고 ' + (p.stock != null ? p.stock : '-');
+  stkEl.className = 'popup-stk-chip ' + (isLow ? 'warn' : 'ok');
+
+  const safeEl = document.getElementById('pp-safe');
+  safeEl.textContent = '안전재고 ' + (p.safety != null ? p.safety : '-');
+  safeEl.className = 'popup-stk-chip ok';
+
+  const fields = [
+    ['장비', p.eq], ['Type', p.type], ['Part', p.part],
+    ['Model', p.model], ['설명1', p.desc1], ['설명2', p.desc2],
+  ];
+  document.getElementById('pp-rows').innerHTML = fields
+    .filter(([, v]) => v)
+    .map(([l, v]) => `<div class="popup-row">
+      <span class="popup-label">${esc(l)}</span>
+      <span class="popup-val">${esc(v)}</span>
+    </div>`).join('');
+
+  document.getElementById('part-popup').classList.add('open');
+  history.pushState({popup: true}, '');
+}
+
+function closePartPopup() {
+  document.getElementById('part-popup').classList.remove('open');
 }
 
 /* ── SPL 검색 ── */
@@ -1018,14 +1093,38 @@ function openFromSearch(eqName, deptKey) {
 }
 
 /* ── 화면 전환 ── */
+let _currentScreen = 0;
+
 function goTo(n) {
+  _currentScreen = n;
   document.getElementById('screens').className = 's' + n;
   if (n === 1) document.querySelector('#s-dept .scroll-body').scrollTop = 0;
   if (n === 2) document.getElementById('splList').scrollTop = 0;
+  history.pushState({screen: n}, '');
 }
 function goBack(from) {
   goTo(from - 1);
 }
+
+// 하드웨어 뒤로가기 처리
+window.addEventListener('popstate', e => {
+  // 팝업 열려있으면 팝업만 닫기
+  if (document.getElementById('part-popup').classList.contains('open')) {
+    closePartPopup();
+    return;
+  }
+  // 스크린 뒤로
+  if (_currentScreen > 0) {
+    _currentScreen--;
+    document.getElementById('screens').className = 's' + _currentScreen;
+  } else {
+    // 홈이면 history entry 하나 더 추가해서 앱 종료 방지
+    history.pushState({screen: 0}, '');
+  }
+});
+
+// 초기 history state 설정 (앱 종료 방지)
+history.replaceState({screen: 0}, '');
 
 /* ── 이스케이프 ── */
 function esc(s) {
@@ -1034,6 +1133,9 @@ function esc(s) {
 }
 
 loadData();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
 </script>
 </body>
 </html>
