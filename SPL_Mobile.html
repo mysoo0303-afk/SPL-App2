@@ -177,7 +177,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothi
 .spl-eq-tag{font-size:11px;color:var(--accent);margin-top:1px;}
 
 /* ════ 장비 리스트 테이블 ════ */
-.eq-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;
+.eq-zoom-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;
+  background:var(--panel);border-bottom:1px solid var(--bd);}
+.eq-zoom-bar button{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--bg);font-size:18px;line-height:1;cursor:pointer;color:var(--text);}
+.eq-zoom-lbl{font-size:12px;color:var(--muted);min-width:36px;text-align:center;}
+.eq-tbl-wrap{overflow:auto;-webkit-overflow-scrolling:touch;
   margin:8px;border-radius:12px;border:1px solid var(--bd);
   box-shadow:0 1px 4px var(--shadow);}
 .eq-tbl{border-collapse:collapse;font-size:11.5px;width:100%;
@@ -590,10 +595,31 @@ function renderEquipListTable(deptKey, body) {
     return `<tr${isGrpStart ? ' class="grp-start"' : ''}>${tds}</tr>`;
   }).join('');
 
+  let eqFontSize = 11.5;
+
   body.innerHTML =
+    '<div class="eq-zoom-bar">' +
+    '<button id="eq-zm-out">−</button>' +
+    '<span class="eq-zoom-lbl" id="eq-zm-lbl">100%</span>' +
+    '<button id="eq-zm-in">＋</button>' +
+    '</div>' +
     '<div class="eq-tbl-wrap">' +
-    `<table class="eq-tbl">${thead}<tbody>${tbody}</tbody></table>` +
+    `<table class="eq-tbl" id="eq-tbl-main">${thead}<tbody>${tbody}</tbody></table>` +
     '</div>';
+
+  function applyEqZoom() {
+    const tbl = document.getElementById('eq-tbl-main');
+    const lbl = document.getElementById('eq-zm-lbl');
+    if (tbl) tbl.style.fontSize = eqFontSize + 'px';
+    if (lbl) lbl.textContent = Math.round(eqFontSize / 11.5 * 100) + '%';
+  }
+
+  document.getElementById('eq-zm-out').addEventListener('click', () => {
+    eqFontSize = Math.max(7, eqFontSize - 1.5); applyEqZoom();
+  });
+  document.getElementById('eq-zm-in').addEventListener('click', () => {
+    eqFontSize = Math.min(18, eqFontSize + 1.5); applyEqZoom();
+  });
 }
 
 /* ── 배치도 테이블 렌더링 ──
