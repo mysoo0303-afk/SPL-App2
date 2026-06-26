@@ -1,8 +1,8 @@
-const CACHE = 'spl-v2';
-const ASSETS = ['./SPL_Mobile.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'spl-v3';
+const STATIC = ['./icon-192.png', './icon-512.png', './manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));
   self.skipWaiting();
 });
 
@@ -14,7 +14,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // HTML은 항상 네트워크에서 (자동 업데이트)
+  if (e.request.destination === 'document' || e.request.url.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+  // 정적 파일은 캐시 우선
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    caches.match(e.request).then(cached => cached || fetch(e.request))
   );
 });
